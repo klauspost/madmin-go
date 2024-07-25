@@ -690,7 +690,7 @@ type RPCMetrics struct {
 	OutQueue         int       `json:"outQueue"`
 	LastPongTime     time.Time `json:"lastPongTime"`
 	LastPingMS       float64   `json:"lastPingMS"`
-	Max1MinPingMS    float64   `json:"max1MinPingMS"`
+	MaxPingDur       float64   `json:"maxPingDur"` // Maximum across all merged entries.
 	LastConnectTime  time.Time `json:"lastConnectTime"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
@@ -722,8 +722,8 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		m.LastPongTime = other.LastPongTime
 		m.LastPingMS = other.LastPingMS
 	}
-	if m.Max1MinPingMS < other.Max1MinPingMS {
-		m.Max1MinPingMS = other.Max1MinPingMS
+	if m.MaxPingDur < other.MaxPingDur {
+		m.MaxPingDur = other.MaxPingDur
 	}
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
