@@ -44,6 +44,8 @@ import (
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
 
+//msgp:replace MetricType with:uint32
+
 // MetricsNone indicates no metrics.
 const MetricsNone MetricType = 0
 
@@ -61,6 +63,7 @@ const (
 	MetricsAPI
 	MetricsReplication
 	MetricsProcess
+	MetricsErrors
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -2118,4 +2121,21 @@ func (m *ProcessMetrics) Merge(other *ProcessMetrics) {
 	m.MemMaps.TotalAnonymous += other.MemMaps.TotalAnonymous
 	m.MemMaps.TotalSwap += other.MemMaps.TotalSwap
 	m.MemMaps.Count += other.MemMaps.Count
+}
+
+type SystemErrors struct {
+	// Nodes that responded.
+	Nodes int `json:"nodes,omitempty"`
+
+	// Nodes that responded with no errors.
+	NodesOK int `json:"nodes_ok,omitempty"`
+
+	// Errors grouped by type and error text. Errors must...
+	// * Signal a problem that can cause outage.
+	// * Be actionable.
+	// * Be mergeable across nodes. Ie not include node specific information.
+	// * Not report the same error in multiple forms.
+	Errors map[MetricType]map[string]struct {
+		Nodes []string `json:"nodes"`
+	}
 }
