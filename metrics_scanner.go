@@ -198,6 +198,10 @@ func (node *ScannerMetricsNode) RequiredMetricTypes() MetricType {
 	return MetricsScanner
 }
 
+func (node *ScannerMetricsNode) ShouldPauseRefresh() bool {
+	return false
+}
+
 func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "buckets":
@@ -254,6 +258,10 @@ func (node *ScannerBucketsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *ScannerBucketsNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerBucketsNode) GetPath() string                 { return node.path }
 func (node *ScannerBucketsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerBucketsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerBucketsNode) GetChild(name string) (MetricNode, error) {
 	if stats, exists := node.buckets[name]; exists {
 		return NewScannerBucketStatsNode(stats, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -282,6 +290,10 @@ func (node *ScannerBucketStatsNode) GetMetricFlags() MetricFlags     { return 0 
 func (node *ScannerBucketStatsNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerBucketStatsNode) GetPath() string                 { return node.path }
 func (node *ScannerBucketStatsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerBucketStatsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerBucketStatsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("bucket stats is a leaf node")
 }
@@ -328,6 +340,10 @@ func (node *ScannerLifetimeOpsNode) GetMetricFlags() MetricFlags     { return 0 
 func (node *ScannerLifetimeOpsNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerLifetimeOpsNode) GetPath() string                 { return node.path }
 func (node *ScannerLifetimeOpsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerLifetimeOpsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.ops[name]; exists {
 		return NewScannerOpCountNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -377,6 +393,10 @@ func (node *ScannerLifetimeILMNode) GetMetricFlags() MetricFlags     { return 0 
 func (node *ScannerLifetimeILMNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerLifetimeILMNode) GetPath() string                 { return node.path }
 func (node *ScannerLifetimeILMNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerLifetimeILMNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerLifetimeILMNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.ilm[name]; exists {
 		return NewScannerOpCountNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -429,6 +449,10 @@ func (node *ScannerLastMinuteNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *ScannerLastMinuteNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerLastMinuteNode) GetPath() string                 { return node.path }
 func (node *ScannerLastMinuteNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerLastMinuteNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "actions":
@@ -485,6 +509,10 @@ func (node *ScannerTimedActionsNode) GetMetricFlags() MetricFlags     { return 0
 func (node *ScannerTimedActionsNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerTimedActionsNode) GetPath() string                 { return node.path }
 func (node *ScannerTimedActionsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerTimedActionsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerTimedActionsNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.actions[name]; exists {
 		return NewScannerTimedActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -519,6 +547,10 @@ func (node *ScannerTimedActionNode) GetMetricFlags() MetricFlags     { return 0 
 func (node *ScannerTimedActionNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerTimedActionNode) GetPath() string                 { return node.path }
 func (node *ScannerTimedActionNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerTimedActionNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerTimedActionNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("timed action is a leaf node")
 }
@@ -550,6 +582,10 @@ func (node *ScannerPathsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *ScannerPathsNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerPathsNode) GetPath() string                 { return node.path }
 func (node *ScannerPathsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerPathsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerPathsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("paths node is a leaf node")
 }
@@ -577,6 +613,10 @@ func (node *ScannerOpCountNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *ScannerOpCountNode) GetParent() MetricNode           { return node.parent }
 func (node *ScannerOpCountNode) GetPath() string                 { return node.path }
 func (node *ScannerOpCountNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+
+func (node *ScannerOpCountNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *ScannerOpCountNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation count is a leaf node")
 }

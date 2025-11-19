@@ -1367,7 +1367,6 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 	m.N += other.N
 }
 
-
 // Segmenter implement interface on pointers.
 type Segmenter[T any] interface {
 	msgp.Encodable
@@ -1401,6 +1400,7 @@ func (s *Segmented[T, PT]) Add(other *Segmented[T, PT]) {
 	}
 	if len(s.Segments) == 0 {
 		*s = *other
+		s.Segments = append([]T{}, other.Segments...)
 		return
 	}
 

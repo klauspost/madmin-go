@@ -50,6 +50,46 @@ func NewNavigationState(adminClient *madmin.AdminClient, metrics *madmin.Realtim
 func (ns *NavigationState) GetCurrentPath() string {
 	return ns.currentPath
 }
+func (ns *NavigationState) ShouldPauseRefresh() bool {
+	// Check if any node in the current path requires pausing refresh
+	if ns.currentNode != nil && ns.currentNode.ShouldPauseRefresh() {
+		return true
+	}
+
+	// Traverse up the path to check parent nodes
+	// We need to check all nodes in the current navigation path
+	currentPath := ns.currentPath
+	if currentPath == "" || currentPath == "/" {
+		return false
+	}
+
+	// Split the path into segments and check each parent path
+	pathParts := strings.Split(strings.Trim(currentPath, "/"), "/")
+	currentTestPath := "/"
+
+	for i := 0; i < len(pathParts); i++ {
+		if pathParts[i] == "" {
+			continue
+		}
+
+		if currentTestPath == "/" {
+			currentTestPath = "/" + pathParts[i]
+		} else {
+			currentTestPath = currentTestPath + "/" + pathParts[i]
+		}
+
+		// Navigate to this path and check if it should pause refresh
+		if ns.navigator != nil {
+			if node, err := ns.navigator.Navigate(currentTestPath); err == nil {
+				if node.ShouldPauseRefresh() {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
 
 // GetChildren returns the available children of the current node
 func (ns *NavigationState) GetChildren() []madmin.MetricChild {

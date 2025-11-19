@@ -92,25 +92,44 @@ func (r *Renderer) SetSize(width, height int) {
 
 // RenderHeader renders the main header with title and path
 func (r *Renderer) RenderHeader(nav *NavigationState) string {
-	var parts []string
-
-	// Title
-	title := titleStyle.Render("📡 Project Tricorder - MinIO Metrics Navigator")
-	parts = append(parts, title)
-
-	// Current path with breadcrumbs
+	// Build combined header line
 	breadcrumbs := nav.GetBreadcrumbs()
 	pathDisplay := strings.Join(breadcrumbs, " › ")
-	path := pathStyle.Render(fmt.Sprintf("Path: %s", pathDisplay))
-	parts = append(parts, path)
 
-	// Status line
-	status := r.renderStatus(nav)
-	if status != "" {
-		parts = append(parts, status)
+	// Get timing info with fixed width
+	var timeDisplay string
+	if nav.IsRefreshing() {
+		timeDisplay = "refreshing"
+	} else {
+		lastRefresh := nav.GetLastRefresh()
+		if !lastRefresh.IsZero() {
+			timeAgo := time.Since(lastRefresh)
+			if timeAgo < 10*time.Second {
+				timeDisplay = fmt.Sprintf("%.1fs ago", timeAgo.Seconds())
+			} else {
+				timeDisplay = fmt.Sprintf("%vs ago", int(timeAgo.Seconds()))
+			}
+		} else {
+			timeDisplay = "no refresh"
+		}
 	}
 
-	return strings.Join(parts, "\n") + "\n"
+	// Get metric type
+	var typeDisplay string
+	metricType, _ := nav.GetMetricInfo()
+	if metricType != madmin.MetricsNone {
+		typeDisplay = r.formatMetricType(metricType)
+	}
+
+	// Combine everything in one line
+	var combined string
+	if typeDisplay != "" {
+		combined = fmt.Sprintf("📡 %s [%s | %s]", pathDisplay, timeDisplay, typeDisplay)
+	} else {
+		combined = fmt.Sprintf("📡 %s [%s]", pathDisplay, timeDisplay)
+	}
+
+	return titleStyle.Render(combined) + "\n"
 }
 
 // renderStatus renders the status line with refresh time and errors
@@ -288,19 +307,31 @@ func (r *Renderer) renderLeafData(nav *NavigationState) string {
 	lines = append(lines, itemStyle.Render(fmt.Sprintf("Metric Data (%d values):", len(data))))
 	lines = append(lines, "")
 
-	// Sort keys for consistent display
+	// Sort keys by numeric prefix if present, otherwise alphabetically
 	var keys []string
 	for key := range data {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	sort.Strings(keys) // This will sort by the numeric prefix first
 
 	for _, key := range keys {
 		value := data[key]
-		formattedValue := r.formatValue(key, value)
+
+		// Strip numeric prefix if present (format: "00:Key Name")
+		displayKey := key
+		if colonIndex := strings.Index(key, ":"); colonIndex != -1 && colonIndex <= 3 {
+			displayKey = key[colonIndex+1:]
+		}
+
+		// Skip empty keys (like separators)
+		if strings.TrimSpace(displayKey) == "" {
+			continue
+		}
+
+		formattedValue := r.formatValue(displayKey, value)
 
 		line := fmt.Sprintf("%s %s",
-			keyStyle.Render(key),
+			keyStyle.Render(displayKey),
 			valueStyle.Render(formattedValue))
 
 		lines = append(lines, itemStyle.Render(line))

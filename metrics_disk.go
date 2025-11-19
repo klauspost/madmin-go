@@ -200,6 +200,10 @@ func (node *DiskMetricsNavigator) RequiredMetricTypes() MetricType {
 	return MetricsDisk
 }
 
+func (node *DiskMetricsNavigator) ShouldPauseRefresh() bool {
+	return false
+}
+
 func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "ops_last_minute":
@@ -269,6 +273,10 @@ func (node *DiskSpaceNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskSpaceNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskSpaceNode) GetPath() string                 { return node.path }
 func (node *DiskSpaceNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskSpaceNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskSpaceNode) GetChild(name string) (MetricNode, error) {
 	// Could implement sub-navigation for free/used/inodes
 	return nil, fmt.Errorf("disk space component navigation not yet implemented for: %s", name)
@@ -279,6 +287,10 @@ type DiskLifetimeOpsNode struct {
 	ops    map[string]DiskAction
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskLifetimeOpsNode) ShouldPauseRefresh() bool {
+	return false
 }
 
 func NewDiskLifetimeOpsNode(ops map[string]DiskAction, parent MetricNode, path string) *DiskLifetimeOpsNode {
@@ -451,6 +463,10 @@ func (node *DiskLastMinuteNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskLastMinuteNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskLastMinuteNode) GetPath() string                 { return node.path }
 func (node *DiskLastMinuteNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskLastMinuteNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.ops[name]; exists {
 		return NewDiskActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -545,6 +561,10 @@ func (node *DiskLastDayNode) GetMetricFlags() MetricFlags     { return MetricsDa
 func (node *DiskLastDayNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskLastDayNode) GetPath() string                 { return node.path }
 func (node *DiskLastDayNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskLastDayNode) ShouldPauseRefresh() bool {
+	return true
+}
 func (node *DiskLastDayNode) GetChild(name string) (MetricNode, error) {
 	// Could implement navigation into individual segmented data
 	return nil, fmt.Errorf("disk segmented navigation not yet implemented for: %s", name)
@@ -606,6 +626,10 @@ func (node *DiskIOStatsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskIOStatsNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskIOStatsNode) GetPath() string                 { return node.path }
 func (node *DiskIOStatsNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskIOStatsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskIOStatsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "minute":
@@ -685,6 +709,9 @@ func (node *DiskIOMinuteStatsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskIOMinuteStatsNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskIOMinuteStatsNode) GetPath() string                 { return node.path }
 func (node *DiskIOMinuteStatsNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+func (node *DiskIOMinuteStatsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskIOMinuteStatsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("minute IO stats is a leaf node")
 }
@@ -787,6 +814,9 @@ func (node *DiskIODailyStatsNode) GetMetricFlags() MetricFlags     { return Metr
 func (node *DiskIODailyStatsNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskIODailyStatsNode) GetPath() string                 { return node.path }
 func (node *DiskIODailyStatsNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+func (node *DiskIODailyStatsNode) ShouldPauseRefresh() bool {
+	return true
+}
 func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("daily IO stats is a leaf node")
 }
@@ -825,6 +855,10 @@ func (node *DiskHealingNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskHealingNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskHealingNode) GetPath() string                 { return node.path }
 func (node *DiskHealingNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskHealingNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskHealingNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk healing is a leaf node")
 }
@@ -853,6 +887,10 @@ func (node *DiskCacheNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskCacheNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskCacheNode) GetPath() string                 { return node.path }
 func (node *DiskCacheNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskCacheNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskCacheNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk cache is a leaf node")
 }
@@ -1023,6 +1061,10 @@ func (node *DiskSummaryNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskSummaryNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskSummaryNode) GetPath() string                 { return node.path }
 func (node *DiskSummaryNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskSummaryNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskSummaryNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk summary is a leaf node")
 }
@@ -1068,6 +1110,10 @@ func (node *DiskActionNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *DiskActionNode) GetParent() MetricNode           { return node.parent }
 func (node *DiskActionNode) GetPath() string                 { return node.path }
 func (node *DiskActionNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+
+func (node *DiskActionNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *DiskActionNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk action is a leaf node")
 }

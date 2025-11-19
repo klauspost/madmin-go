@@ -115,6 +115,10 @@ func (node *NetMetricsNavigator) RequiredMetricTypes() MetricType {
 	return MetricNet
 }
 
+func (node *NetMetricsNavigator) ShouldPauseRefresh() bool {
+	return false
+}
+
 // NetInterfacesNode shows network interface stats
 type NetInterfacesNode struct {
 	metrics *NetMetrics
@@ -203,6 +207,10 @@ func (node *NetInterfacesNode) RequiredMetricTypes() MetricType {
 	return MetricNet
 }
 
+func (node *NetInterfacesNode) ShouldPauseRefresh() bool {
+	return false
+}
+
 // NetInterfaceNode shows individual interface stats
 type NetInterfaceNode struct {
 	interfaceName string
@@ -268,6 +276,10 @@ func (node *NetInterfaceNode) RequiredMetricTypes() MetricType {
 	return MetricNet
 }
 
+func (node *NetInterfaceNode) ShouldPauseRefresh() bool {
+	return false
+}
+
 // NetInternodeNode shows internode communication stats
 type NetInternodeNode struct {
 	metrics *NetMetrics
@@ -331,4 +343,8 @@ func (node *NetInternodeNode) GetChild(name string) (MetricNode, error) {
 
 func (node *NetInternodeNode) RequiredMetricTypes() MetricType {
 	return MetricNet
+}
+
+func (node *NetInternodeNode) ShouldPauseRefresh() bool {
+	return false
 }

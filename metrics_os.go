@@ -107,6 +107,10 @@ func (node *OSMetricsNavigator) RequiredMetricTypes() MetricType {
 	return MetricsOS
 }
 
+func (node *OSMetricsNavigator) ShouldPauseRefresh() bool {
+	return false
+}
+
 func (node *OSMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "lifetime_ops":
@@ -169,6 +173,10 @@ func (node *OSLifetimeOpsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSLifetimeOpsNode) GetParent() MetricNode           { return node.parent }
 func (node *OSLifetimeOpsNode) GetPath() string                 { return node.path }
 func (node *OSLifetimeOpsNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSLifetimeOpsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.ops[name]; exists {
 		return NewOSOpCountNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -227,6 +235,10 @@ func (node *OSLastMinuteNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSLastMinuteNode) GetParent() MetricNode           { return node.parent }
 func (node *OSLastMinuteNode) GetPath() string                 { return node.path }
 func (node *OSLastMinuteNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSLastMinuteNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.operations[name]; exists {
 		return NewOSTimedActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -321,6 +333,10 @@ func (node *OSSensorsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSSensorsNode) GetParent() MetricNode           { return node.parent }
 func (node *OSSensorsNode) GetPath() string                 { return node.path }
 func (node *OSSensorsNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSSensorsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSSensorsNode) GetChild(name string) (MetricNode, error) {
 	if sensor, exists := node.sensors[name]; exists {
 		return NewOSSensorNode(name, &sensor, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -353,6 +369,10 @@ func (node *OSOpCountNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSOpCountNode) GetParent() MetricNode           { return node.parent }
 func (node *OSOpCountNode) GetPath() string                 { return node.path }
 func (node *OSOpCountNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSOpCountNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSOpCountNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation count is a leaf node")
 }
@@ -398,6 +418,10 @@ func (node *OSTimedActionNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSTimedActionNode) GetParent() MetricNode           { return node.parent }
 func (node *OSTimedActionNode) GetPath() string                 { return node.path }
 func (node *OSTimedActionNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSTimedActionNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSTimedActionNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("timed action is a leaf node")
 }
@@ -453,6 +477,10 @@ func (node *OSSensorNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *OSSensorNode) GetParent() MetricNode           { return node.parent }
 func (node *OSSensorNode) GetPath() string                 { return node.path }
 func (node *OSSensorNode) RequiredMetricTypes() MetricType { return MetricsOS }
+
+func (node *OSSensorNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *OSSensorNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("sensor is a leaf node")
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -17,9 +16,10 @@ type TricorderModel struct {
 	width        int
 	height       int
 	quitting     bool
-	lastPath     string // Track the current path to detect navigation changes
-	needsClear   bool   // Flag to indicate when we need to clear screen
-	scrollOffset int    // Current scroll position in content
+	lastPath     string    // Track the current path to detect navigation changes
+	needsClear   bool      // Flag to indicate when we need to clear screen
+	scrollOffset int       // Current scroll position in content
+	lastEscTime  time.Time // Track last Esc press for double-Esc exit
 }
 
 // refreshMsg is sent when auto-refresh timer fires
@@ -64,7 +64,17 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.renderer.SetSize(msg.Width, msg.Height)
+
+		// Sanity check for reasonable terminal dimensions
+		// Terminal scrollback can be huge, but visible area is typically 20-60 lines
+		if m.height > 60 || m.height <= 0 {
+			m.height = 30 // Use reasonable default for visible area
+		}
+		if m.width > 200 || m.width <= 0 {
+			m.width = 100 // Use reasonable default
+		}
+
+		m.renderer.SetSize(m.width, m.height)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -72,10 +82,10 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case refreshMsg:
 		// Auto-refresh triggered
-		if !m.nav.IsRefreshing() {
+		if !m.nav.IsRefreshing() && !m.nav.ShouldPauseRefresh() {
 			return m, m.doRefresh(false) // false = auto refresh
 		}
-		// If already refreshing, just set up next timer
+		// If already refreshing or paused, just set up next timer
 		return m, tea.Tick(m.config.RefreshPeriod, func(t time.Time) tea.Msg {
 			return refreshMsg{}
 		})
@@ -122,15 +132,14 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	children := m.nav.GetChildren()
 	hasChildren := len(children) > 0 && !m.nav.IsLeaf()
 
-	// Check if we're in a context where scrolling makes sense
+	// Allow scrolling when there's more content than visible space
+	// Get content to check if scrolling is needed
 	mainContent := m.renderer.RenderContent(m.nav)
 	contentLines := strings.Split(strings.TrimSpace(mainContent), "\n")
-	height := m.height
-	if height <= 0 {
-		height = 24
-	}
-	availableHeight := height - 8 // Rough estimate for header/footer space
-	needsScrolling := len(contentLines) > availableHeight
+
+	// Use a simple height estimate for this check
+	estimatedAvailableHeight := 15 // Conservative estimate
+	needsScrolling := len(contentLines) > estimatedAvailableHeight
 
 	switch msg.String() {
 	case "up", "k":
@@ -152,14 +161,9 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.nav.MoveSelection(1)
 			return m, nil
 		} else if needsScrolling {
-			// Scroll content down
-			maxScroll := len(contentLines) - availableHeight
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			if m.scrollOffset < maxScroll {
-				m.scrollOffset++
-			}
+			// Just increment scroll and let the main View() method handle bounds
+			// This avoids duplicate calculation inconsistencies
+			m.scrollOffset++
 			return m, nil
 		}
 
@@ -194,6 +198,7 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					if newPath != oldPath {
 						m.needsClear = true
 						m.scrollOffset = 0 // Reset scroll on navigation
+						// Debug: Navigation should reset scroll to 0
 					}
 				}
 			}
@@ -217,12 +222,8 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "pgup", "page_up":
 		if needsScrolling {
-			// Page up - scroll by half the available height
-			pageSize := availableHeight / 2
-			if pageSize < 1 {
-				pageSize = 1
-			}
-			m.scrollOffset -= pageSize
+			// Page up - just subtract a reasonable amount and let View() handle bounds
+			m.scrollOffset -= 5
 			if m.scrollOffset < 0 {
 				m.scrollOffset = 0
 			}
@@ -231,19 +232,8 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "pgdown", "page_down":
 		if needsScrolling {
-			// Page down - scroll by half the available height
-			pageSize := availableHeight / 2
-			if pageSize < 1 {
-				pageSize = 1
-			}
-			maxScroll := len(contentLines) - availableHeight
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			m.scrollOffset += pageSize
-			if m.scrollOffset > maxScroll {
-				m.scrollOffset = maxScroll
-			}
+			// Page down - just add a reasonable amount and let View() handle bounds
+			m.scrollOffset += 5
 			return m, nil
 		}
 	}
@@ -251,7 +241,18 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle back navigation
 	switch msg.String() {
 	case "esc", "backspace":
-		if m.nav.CanNavigateBack() {
+		// Check for double-Esc exit on root page
+		if !m.nav.CanNavigateBack() {
+			// We're at root - check for double-Esc within 1 second
+			now := time.Now()
+			if !m.lastEscTime.IsZero() && now.Sub(m.lastEscTime) < time.Second {
+				// Double-Esc within 1 second - exit
+				m.quitting = true
+				return m, tea.Quit
+			}
+			m.lastEscTime = now
+		} else {
+			// Normal back navigation
 			oldPath := m.nav.GetCurrentPath()
 			err := m.nav.NavigateBack()
 			if err != nil {
@@ -266,6 +267,34 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	}
+
+	// Handle letter navigation - jump to next entry starting with that letter
+	if len(msg.String()) == 1 && hasChildren {
+		letter := strings.ToLower(msg.String())
+		children := m.nav.GetChildren()
+		selectedIndex := m.nav.GetSelectedIndex()
+
+		// Start search from the item after current selection
+		startIndex := selectedIndex + 1
+		if m.nav.CanNavigateBack() {
+			startIndex-- // Account for .. entry
+		}
+
+		// Search forward from current position
+		for i := 0; i < len(children); i++ {
+			checkIndex := (startIndex + i) % len(children)
+			childName := strings.ToLower(children[checkIndex].Name)
+			if strings.HasPrefix(childName, letter) {
+				// Found match - set selection (account for .. entry)
+				newSelection := checkIndex
+				if m.nav.CanNavigateBack() {
+					newSelection++ // Account for .. entry at index 0
+				}
+				m.nav.SetSelectedIndex(newSelection)
+				return m, nil
+			}
+		}
 	}
 
 	return m, nil
@@ -307,22 +336,33 @@ func (m *TricorderModel) View() string {
 
 	// Ensure we have valid height (fallback to reasonable default)
 	height := m.height
-	if height <= 0 {
-		height = 24 // Default terminal height
+	if height <= 0 || height > 60 {
+		height = 30 // Default visible terminal height
 	}
 
-	// Calculate available space for main content
-	reservedLines := len(headerLines) + len(errorLines) + len(helpLines) + 3 // +3 for separators and spacing
+	// Calculate available space for main content more conservatively
+	// Account for: headers, errors, help, separators, spacing, and some buffer
+	reservedLines := len(headerLines) + len(errorLines) + len(helpLines) + 5 // +5 for separators, spacing, and buffer
 	availableHeight := height - reservedLines
-	if availableHeight < 5 { // Minimum content area
-		availableHeight = 5
+
+	// Ensure minimum but be less conservative now that scrolling works
+	if availableHeight < 8 {
+		availableHeight = 8
 	}
 
 	// Get main content and handle scrolling
 	mainContent := m.renderer.RenderContent(m.nav)
 	contentLines := strings.Split(strings.TrimSpace(mainContent), "\n")
 
-	// Calculate scroll bounds
+	// Force scroll reset if we're at a different path than expected
+	currentPath := m.nav.GetCurrentPath()
+	if currentPath != m.lastPath {
+		m.scrollOffset = 0 // Reset scroll when path changes
+		m.lastPath = currentPath
+		// Don't clear screen here - only on explicit navigation
+	}
+
+	// Calculate scroll bounds - how far we can scroll down
 	maxScroll := len(contentLines) - availableHeight
 	if maxScroll < 0 {
 		maxScroll = 0
@@ -336,32 +376,33 @@ func (m *TricorderModel) View() string {
 		m.scrollOffset = 0
 	}
 
-	// Apply scrolling
+	// Apply scrolling - simpler approach
 	var displayLines []string
+
 	if len(contentLines) > availableHeight {
-		// Show scrolled portion
-		endIndex := m.scrollOffset + availableHeight - 1 // -1 for scroll indicator
-		if endIndex >= len(contentLines) {
-			endIndex = len(contentLines) - 1
+		// Need scrolling
+		visibleLines := availableHeight
+		startIdx := m.scrollOffset
+		endIdx := startIdx + visibleLines
+
+		// Ensure bounds are correct
+		if startIdx < 0 {
+			startIdx = 0
+		}
+		if startIdx >= len(contentLines) {
+			startIdx = len(contentLines) - visibleLines
+			if startIdx < 0 {
+				startIdx = 0
+			}
+		}
+		if endIdx > len(contentLines) {
+			endIdx = len(contentLines)
 		}
 
-		displayLines = contentLines[m.scrollOffset:endIndex+1]
-
-		// Add scroll indicators
-		scrollInfo := ""
-		if m.scrollOffset > 0 && m.scrollOffset < maxScroll {
-			scrollInfo = fmt.Sprintf("↑↓ Scroll %d/%d", m.scrollOffset+availableHeight-1, len(contentLines))
-		} else if m.scrollOffset > 0 {
-			scrollInfo = fmt.Sprintf("↑ Scroll (at bottom) %d/%d", len(contentLines), len(contentLines))
-		} else if maxScroll > 0 {
-			scrollInfo = fmt.Sprintf("↓ Scroll (at top) %d/%d", availableHeight-1, len(contentLines))
-		}
-
-		if scrollInfo != "" {
-			displayLines = append(displayLines, scrollInfo)
-		}
+		displayLines = append([]string{}, contentLines[startIdx:endIdx]...)
 	} else {
-		displayLines = contentLines
+		// All content fits
+		displayLines = append([]string{}, contentLines...)
 	}
 
 	// Assemble final output
@@ -380,7 +421,6 @@ func (m *TricorderModel) View() string {
 		output.WriteString(line)
 		output.WriteString("\n")
 	}
-	output.WriteString("\n")
 
 	// Separator and help
 	if m.width > 0 {

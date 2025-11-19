@@ -34,6 +34,10 @@ type CPUMetricsNavigator struct {
 	path   string
 }
 
+func (node *CPUMetricsNavigator) ShouldPauseRefresh() bool {
+	return false
+}
+
 // NewCPUMetricsNavigator creates a new CPU metrics navigator
 func NewCPUMetricsNavigator(cpu *CPUMetrics, parent MetricNode, path string) *CPUMetricsNavigator {
 	return &CPUMetricsNavigator{cpu: cpu, parent: parent, path: path}
@@ -230,6 +234,10 @@ type CPUTimesNode struct {
 	path   string
 }
 
+func (node *CPUTimesNode) ShouldPauseRefresh() bool {
+	return false
+}
+
 func NewCPUTimesNode(times interface{}, parent MetricNode, path string) *CPUTimesNode {
 	return &CPUTimesNode{times: times, parent: parent, path: path}
 }
@@ -262,6 +270,7 @@ func (node *CPUTimesNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *CPUTimesNode) GetParent() MetricNode           { return node.parent }
 func (node *CPUTimesNode) GetPath() string                 { return node.path }
 func (node *CPUTimesNode) RequiredMetricTypes() MetricType { return MetricsCPU }
+
 func (node *CPUTimesNode) GetChild(name string) (MetricNode, error) {
 	// Individual time component nodes would be implemented here
 	return nil, fmt.Errorf("cpu time component navigation not yet implemented for: %s", name)
@@ -272,6 +281,10 @@ type CPULoadNode struct {
 	load   interface{} // load.AvgStat from gopsutil
 	parent MetricNode
 	path   string
+}
+
+func (node *CPULoadNode) ShouldPauseRefresh() bool {
+	return false
 }
 
 func NewCPULoadNode(load interface{}, parent MetricNode, path string) *CPULoadNode {
@@ -309,6 +322,10 @@ type CPUFrequencyNode struct {
 	cpu    *CPUMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *CPUFrequencyNode) ShouldPauseRefresh() bool {
+	return false
 }
 
 func NewCPUFrequencyNode(cpu *CPUMetrics, parent MetricNode, path string) *CPUFrequencyNode {
@@ -462,6 +479,10 @@ func (node *CPUModelsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *CPUModelsNode) GetParent() MetricNode           { return node.parent }
 func (node *CPUModelsNode) GetPath() string                 { return node.path }
 func (node *CPUModelsNode) RequiredMetricTypes() MetricType { return MetricsCPU }
+
+func (node *CPUModelsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *CPUModelsNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.models[name]; exists {
 		return NewCPUModelNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -537,6 +558,10 @@ func (node *CPUGovernorsNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *CPUGovernorsNode) GetParent() MetricNode           { return node.parent }
 func (node *CPUGovernorsNode) GetPath() string                 { return node.path }
 func (node *CPUGovernorsNode) RequiredMetricTypes() MetricType { return MetricsCPU }
+
+func (node *CPUGovernorsNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *CPUGovernorsNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.governors[name]; exists {
 		return NewCPUGovernorNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -570,6 +595,10 @@ func (node *CPUModelNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *CPUModelNode) GetParent() MetricNode           { return node.parent }
 func (node *CPUModelNode) GetPath() string                 { return node.path }
 func (node *CPUModelNode) RequiredMetricTypes() MetricType { return MetricsCPU }
+
+func (node *CPUModelNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *CPUModelNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("cpu model is a leaf node")
 }
@@ -598,6 +627,10 @@ func (node *CPUGovernorNode) GetMetricFlags() MetricFlags     { return 0 }
 func (node *CPUGovernorNode) GetParent() MetricNode           { return node.parent }
 func (node *CPUGovernorNode) GetPath() string                 { return node.path }
 func (node *CPUGovernorNode) RequiredMetricTypes() MetricType { return MetricsCPU }
+
+func (node *CPUGovernorNode) ShouldPauseRefresh() bool {
+	return false
+}
 func (node *CPUGovernorNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("cpu governor is a leaf node")
 }
