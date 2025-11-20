@@ -9,6 +9,8 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
+
 // formatNumberCPU function removed - use humanize.Comma instead
 
 // formatFrequency formats frequency values

@@ -869,8 +869,7 @@ func (node *RPCConnectionSummaryNode) GetLeafData() map[string]string {
 	}
 
 	if node.rpc.Nodes > 0 {
-		uptime := float64(node.rpc.Connected) / float64(node.rpc.Nodes) * 100
-		data["Cluster Availability"] = fmt.Sprintf("%.2f%%", uptime)
+		data["Connections"] = fmt.Sprintf("%.1f per node", float64(node.rpc.Connected)/float64(node.rpc.Nodes))
 	}
 
 	// Add activity summary
@@ -1180,10 +1179,12 @@ func (node *RPCDestinationNode) GetLeafData() map[string]string {
 
 	// Connection timing
 	if !node.stats.LastConnectTime.IsZero() {
-		data["Last Connect"] = node.stats.LastConnectTime.Format("2006-01-02 15:04:05")
+		data["Last Connect"] = fmt.Sprintf("%s (%v ago)", node.stats.LastConnectTime.Format("2006-01-02 15:04:05"),
+			time.Since(node.stats.LastConnectTime).Round(time.Minute).String())
 	}
 	if !node.stats.LastPongTime.IsZero() {
-		data["Last Pong"] = node.stats.LastPongTime.Format("2006-01-02 15:04:05")
+		data["Last Pong"] = fmt.Sprintf("%s (%v ago)", node.stats.LastPongTime.Format("2006-01-02 15:04:05"),
+			time.Since(node.stats.LastPongTime).Round(time.Minute).String())
 	}
 
 	return data
@@ -1241,19 +1242,19 @@ func (node *RPCCallerNode) GetLeafData() map[string]string {
 	if node.stats.OutQueue > 0 {
 		data["Outgoing Queue"] = fmt.Sprintf("%d", node.stats.OutQueue)
 	}
-	if node.stats.LastPingMS > 0 {
-		data["Last Ping"] = fmt.Sprintf("%.2f ms", node.stats.LastPingMS)
-	}
-	if node.stats.MaxPingDurMS > 0 {
-		data["Max Ping"] = fmt.Sprintf("%.2f ms", node.stats.MaxPingDurMS)
+	if node.stats.Connected > 0 {
+		data["Last Ping"] = fmt.Sprintf("%.2f ms", node.stats.LastPingMS/float64(node.stats.Connected))
+		data["Max Ping"] = fmt.Sprintf("%.2f ms", node.stats.MaxPingDurMS/float64(node.stats.Connected))
 	}
 
 	// Connection timing
 	if !node.stats.LastConnectTime.IsZero() {
-		data["Last Connect"] = node.stats.LastConnectTime.Format("2006-01-02 15:04:05")
+		data["Last Connect"] = fmt.Sprintf("%s (%v ago)", node.stats.LastConnectTime.Format("2006-01-02 15:04:05"),
+			time.Since(node.stats.LastConnectTime).Round(time.Minute).String())
 	}
 	if !node.stats.LastPongTime.IsZero() {
-		data["Last Pong"] = node.stats.LastPongTime.Format("2006-01-02 15:04:05")
+		data["Last Pong"] = fmt.Sprintf("%s (%v ago)", node.stats.LastPongTime.Format("2006-01-02 15:04:05"),
+			time.Since(node.stats.LastPongTime).Round(time.Minute).String())
 	}
 
 	return data
@@ -1442,22 +1443,7 @@ func (node *RPCMetricsNode) generateRPCOverviewDashboard() map[string]string {
 
 	// Connection health assessment
 	if node.rpc.Nodes > 0 {
-		connectionRate := float64(node.rpc.Connected) / float64(node.rpc.Nodes) * 100
-		data["Connection Rate"] = fmt.Sprintf("%.1f%%", connectionRate)
-
-		// Health status
-		var healthStatus string
-		if connectionRate >= 95.0 {
-			healthStatus = "Excellent"
-		} else if connectionRate >= 80.0 {
-			healthStatus = "Good"
-		} else if connectionRate >= 60.0 {
-			healthStatus = "Fair"
-		} else {
-			healthStatus = "Poor"
-		}
-		data["Health Status"] = healthStatus
-		data["Cluster Availability"] = fmt.Sprintf("%.2f%%", connectionRate)
+		data["Connections"] = fmt.Sprintf("%.1f per node", float64(node.rpc.Connected)/float64(node.rpc.Nodes))
 	}
 
 	// Activity summary (last minute)
@@ -1489,32 +1475,13 @@ func (node *RPCMetricsNode) generateRPCOverviewDashboard() map[string]string {
 			data["Request Rate"] = fmt.Sprintf("%.1f req/s", rps)
 
 			if totalBytes > 0 {
-				data["Total Throughput"] = humanize.Bytes(uint64(totalBytes))
+				data["Throughput"] = humanize.Bytes(uint64(totalBytes))
 				bps := float64(totalBytes) / 60.0 // per second over the minute
-				data["Throughput Rate"] = humanize.Bytes(uint64(bps)) + "/s"
+				data["Rate"] = humanize.Bytes(uint64(bps)) + "/s"
 			}
 		}
 	} else {
 		data["Recent Activity"] = "No recent RPC activity"
-	}
-
-	// Historical data summary (last day)
-	if len(node.rpc.LastDay) > 0 {
-		var dayTotal int64
-		var dayLatency float64
-
-		for _, segmented := range node.rpc.LastDay {
-			for _, segment := range segmented.Segments {
-				dayTotal += segment.Requests
-				dayLatency += segment.RequestTimeSecs
-			}
-		}
-
-		data["Daily Total"] = fmt.Sprintf("%s requests", humanize.Comma(dayTotal))
-		if dayTotal > 0 && dayLatency > 0 {
-			avgDayLatency := (dayLatency / float64(dayTotal)) * 1000
-			data["Daily Avg Latency"] = fmt.Sprintf("%.2f ms", avgDayLatency)
-		}
 	}
 
 	return data

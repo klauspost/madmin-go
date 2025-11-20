@@ -43,7 +43,7 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Disk Overview
-	data["DISK OVERVIEW"] = fmt.Sprintf("Collected at %s",
+	data["00:Info"] = fmt.Sprintf("Collected at %s",
 		node.disk.CollectedAt.Format("2006-01-02 15:04:05"))
 
 	// Disk Health Status
@@ -138,9 +138,9 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 			opsPerSec := float64(totalOps) / totalTime
 			mbPerSec := float64(totalBytes) / totalTime / (1024 * 1024)
 
-			data["OPERATIONS SUMMARY"] = fmt.Sprintf("%.1f OPS/sec, %.2f MB/s (last minute totals)", opsPerSec, mbPerSec)
+			data["Operations"] = fmt.Sprintf("%.1f OPS/sec, %.2f MB/s (last minute totals)", opsPerSec, mbPerSec)
 		} else if totalOps > 0 {
-			data["OPERATIONS SUMMARY"] = fmt.Sprintf("%s operations (last minute)", humanize.Comma(int64(totalOps)))
+			data["Operations"] = fmt.Sprintf("%s operations (last minute)", humanize.Comma(int64(totalOps)))
 		}
 	}
 
@@ -515,23 +515,15 @@ func (node *DiskLastDayNode) GetLeafData() map[string]string {
 		rps := float64(totalCount) / totalTime
 		if totalBytes > 0 {
 			avgSize := float64(totalBytes) / float64(totalCount)
-			data["DAY TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
+			data["00:Info"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
 				avgTime, humanize.Bytes(uint64(avgSize)), rps, humanize.Comma(int64(totalCount)))
 		} else {
-			data["DAY TOTAL"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
+			data["00:Info"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
 				avgTime, rps, humanize.Comma(int64(totalCount)))
 		}
 	}
 
-	// Format each operation type with day totals
-	var operations []string
-	for opType := range node.segmented {
-		operations = append(operations, opType)
-	}
-	sort.Strings(operations)
-
-	for _, opType := range operations {
-		segmented := node.segmented[opType]
+	for opType, segmented := range node.segmented {
 		total := segmented.Total()
 
 		if total.Count > 0 && total.AccTime > 0 {
@@ -595,28 +587,21 @@ func (node *DiskIOStatsNode) GetLeafData() map[string]string {
 
 	data := map[string]string{}
 
-	// IO Statistics Overview
-	data["IO STATISTICS"] = "Navigate to specific timeframes for detailed IO analysis"
-
 	// Quick overview of minute stats
 	minute := &node.disk.IOStatsMinute
 	if minute.N > 0 {
 		totalIOs := minute.ReadIOs + minute.WriteIOs + minute.DiscardIOs + minute.FlushIOs
-		data["Last Minute Overview"] = fmt.Sprintf("%s total IOs from %d drives",
+		data["Last Minute"] = fmt.Sprintf("%s total IOs from %d drives",
 			humanize.Comma(int64(totalIOs)), minute.N)
 
 		if minute.TotalTicks > 0 {
 			utilPercent := float64(minute.TotalTicks) / (60.0 * 1000.0) * 100.0
-			data["Device Utilization"] = fmt.Sprintf("%.1f%% average utilization",
+			data["Utilization"] = fmt.Sprintf("%.1f%% average utilization",
 				utilPercent/float64(minute.N))
 		}
 	} else {
-		data["Last Minute Status"] = "No recent IO activity data available"
+		data["Last Minute"] = "No recent IO activity data available"
 	}
-
-	// Navigation guidance
-	data["Available Timeframes"] = "minute (real-time), daily (historical)"
-	data["Recommendation"] = "Navigate to 'minute' for real-time IO performance monitoring"
 
 	return data
 }
@@ -665,7 +650,7 @@ func (node *DiskIOMinuteStatsNode) GetLeafData() map[string]string {
 	minute := &node.disk.IOStatsMinute
 	if minute.N > 0 {
 		timeframeSeconds := 60.0 // Last minute stats
-		data["LAST MINUTE IO STATS"] = fmt.Sprintf("Aggregated from %d drives over %.0f seconds",
+		data["00:Info"] = fmt.Sprintf("Aggregated from %d drives over %.0f seconds",
 			minute.N, timeframeSeconds)
 
 		// Format IO operation totals and rates
@@ -773,7 +758,7 @@ func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 
 		timeframeSeconds := float64(segmentCount * 3600) // Each segment represents 1 hour, convert to seconds
 
-		data["DAILY IO STATS"] = fmt.Sprintf("Aggregated from %d drives over %d hour segments",
+		data["00:Info"] = fmt.Sprintf("Aggregated from %d drives over %d hour segments",
 			numDrives, segmentCount)
 
 		// Format IO operation totals and rates (similar to minute stats)

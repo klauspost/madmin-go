@@ -9,6 +9,8 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
+
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
 	Nodes         int        `json:"nodes,omitempty"`         // Number of nodes that have reported data.
@@ -323,10 +325,6 @@ func (a APIMetrics) String() string {
 		parts = append(parts, fmt.Sprintf("Active Endpoints: %d", len(a.LastMinuteAPI)))
 	}
 
-	// Health score
-	score := lastMinute.GetHealthScore()
-	parts = append(parts, fmt.Sprintf("Health: %.1f/10 %s", score, lastMinute.GetHealthStatus()))
-
 	return strings.Join(parts, " | ")
 }
 
@@ -334,14 +332,7 @@ func (a APIMetrics) String() string {
 func (a APIMetrics) GetDashboard() map[string]string {
 	data := make(map[string]string)
 
-	// === API HEALTH SUMMARY ===
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"] = ""
-	data["                API HEALTH SUMMARY"] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"] = ""
-
 	lastMinute := a.LastMinuteTotal()
-	healthScore := lastMinute.GetHealthScore()
-	data["Overall API Health Score"] = fmt.Sprintf("%.1f/10 %s", healthScore, lastMinute.GetHealthStatus())
 	data["Active Nodes"] = fmt.Sprintf("%d nodes responding", a.Nodes)
 	data["Collection Time"] = a.CollectedAt.Format("15:04:05")
 
@@ -354,16 +345,10 @@ func (a APIMetrics) GetDashboard() map[string]string {
 		data["Request Queue Status"] = "No queued requests"
 	}
 
-	// === PERFORMANCE OVERVIEW ===
-	data[""] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ "] = ""
-	data["            PERFORMANCE OVERVIEW"] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ "] = ""
-
 	// Last minute performance
 	if lastMinute.Requests > 0 {
 		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-		data["Request Rate (Last Minute)"] = fmt.Sprintf("%s req/min", humanize.Comma(lastMinute.Requests))
+		data["Requests"] = fmt.Sprintf("%s req/min", humanize.Comma(lastMinute.Requests))
 		data["Average Latency"] = fmt.Sprintf("%.1f ms", avgLatency)
 
 		// Timing range analysis
@@ -400,12 +385,6 @@ func (a APIMetrics) GetDashboard() map[string]string {
 		data["↳ Incoming"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.IncomingBytes)))
 		data["↳ Outgoing"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.OutgoingBytes)))
 	}
-
-	// === ERROR ANALYSIS ===
-	data["  "] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  "] = ""
-	data["              ERROR ANALYSIS"] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  "] = ""
 
 	totalErrors := lastMinute.Errors4xx + lastMinute.Errors5xx
 	if totalErrors > 0 || lastMinute.Requests > 0 {
@@ -448,12 +427,6 @@ func (a APIMetrics) GetDashboard() map[string]string {
 		}
 	}
 
-	// === LIFETIME INSIGHTS ===
-	data["   "] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   "] = ""
-	data["            LIFETIME INSIGHTS"] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   "] = ""
-
 	since := a.SinceStart
 	if since.Requests > 0 {
 		data["Total Requests"] = humanize.Comma(since.Requests)
@@ -473,9 +446,6 @@ func (a APIMetrics) GetDashboard() map[string]string {
 	endpointCount := len(a.LastMinuteAPI)
 	if endpointCount > 0 {
 		data["    "] = ""
-		data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━    "] = ""
-		data["            ENDPOINT ANALYSIS"] = ""
-		data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━    "] = ""
 
 		data["Active Endpoints"] = fmt.Sprintf("%d endpoints receiving traffic", endpointCount)
 
@@ -512,19 +482,6 @@ func (a APIMetrics) GetDashboard() map[string]string {
 				data[fmt.Sprintf("↳ %s", ep.name)] = fmt.Sprintf("%s req, %.1fms avg, %d err",
 					humanize.Comma(ep.stats.Requests), avgLatency, errors)
 			}
-		}
-	}
-
-	// === RECOMMENDATIONS ===
-	recommendations := lastMinute.GetRecommendations()
-	if len(recommendations) > 0 {
-		data["     "] = ""
-		data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     "] = ""
-		data["              RECOMMENDATIONS"] = ""
-		data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     "] = ""
-
-		for i, rec := range recommendations {
-			data[fmt.Sprintf("• Recommendation %d", i+1)] = rec
 		}
 	}
 
@@ -609,9 +566,19 @@ func (node *APILastMinuteNode) GetChildren() []MetricChild {
 
 	var children []MetricChild
 	for _, endpoint := range endpoints {
+		if node.api.LastMinuteAPI[endpoint].Requests == 0 {
+			continue
+		}
+		lastMinute := node.api.LastMinuteAPI[endpoint]
+		avgLatency := float64(0)
+		if lastMinute.Requests > 0 {
+			avgLatency = (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
+		}
+
 		children = append(children, MetricChild{
-			Name:        endpoint,
-			Description: fmt.Sprintf("Last minute statistics for %s", endpoint),
+			Name: endpoint,
+			Description: fmt.Sprintf("Last Minute: %s req (%.1fms avg)",
+				humanize.Comma(lastMinute.Requests), avgLatency),
 		})
 	}
 	return children
@@ -672,35 +639,36 @@ func generateAPIStatsDisplay(stats APIStats, endpointsCount int, showTopEndpoint
 	totalBytes := stats.IncomingBytes + stats.OutgoingBytes
 	if totalBytes > 0 {
 		entries = append(entries, struct{ key, value string }{"Total Throughput", humanize.Bytes(uint64(totalBytes))})
-		entries = append(entries, struct{ key, value string }{"↳ Incoming", humanize.Bytes(uint64(stats.IncomingBytes))})
-		entries = append(entries, struct{ key, value string }{"↳ Outgoing", humanize.Bytes(uint64(stats.OutgoingBytes))})
+		entries = append(entries, struct{ key, value string }{"-> Incoming", humanize.Bytes(uint64(stats.IncomingBytes))})
+		entries = append(entries, struct{ key, value string }{"<- Outgoing", humanize.Bytes(uint64(stats.OutgoingBytes))})
 
 		avgBytesPerReq := totalBytes / stats.Requests
-		entries = append(entries, struct{ key, value string }{"Avg Bytes per Request", humanize.Bytes(uint64(avgBytesPerReq))})
+		entries = append(entries, struct{ key, value string }{"Avg Bytes", humanize.Bytes(uint64(avgBytesPerReq)) + "/req"})
 	}
 
 	// === ERROR ANALYSIS ===
 	totalErrors := stats.Errors4xx + stats.Errors5xx
-	if totalErrors > 0 {
-		errorRate := float64(totalErrors) / float64(stats.Requests) * 100
-		entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
-
-		if stats.Errors4xx > 0 {
-			clientErrorRate := float64(stats.Errors4xx) / float64(stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
-				stats.Errors4xx, clientErrorRate)})
+	if stats.Requests > 0 {
+		if stats.Requests > 0 {
+			errorRate := float64(totalErrors) / float64(stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
 		}
-		if stats.Errors5xx > 0 {
-			serverErrorRate := float64(stats.Errors5xx) / float64(stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
-				stats.Errors5xx, serverErrorRate)})
+		if totalErrors > 0 {
+			if stats.Errors4xx > 0 {
+				clientErrorRate := float64(stats.Errors4xx) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
+					stats.Errors4xx, clientErrorRate)})
+			}
+			if stats.Errors5xx > 0 {
+				serverErrorRate := float64(stats.Errors5xx) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
+					stats.Errors5xx, serverErrorRate)})
+			}
+			if stats.Canceled > 0 {
+				cancelRate := float64(stats.Canceled) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, cancelRate)})
+			}
 		}
-		if stats.Canceled > 0 {
-			cancelRate := float64(stats.Canceled) / float64(stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, cancelRate)})
-		}
-	} else {
-		entries = append(entries, struct{ key, value string }{"Error Rate", "No errors detected"})
 	}
 
 	// === REJECTIONS ===
@@ -1314,37 +1282,39 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 
 	// === THROUGHPUT ===
 	totalBytes := node.stats.IncomingBytes + node.stats.OutgoingBytes
-	if totalBytes > 0 {
+	if totalBytes > 0 && node.stats.Requests > 0 {
 		entries = append(entries, struct{ key, value string }{"Total Throughput", humanize.Bytes(uint64(totalBytes))})
-		entries = append(entries, struct{ key, value string }{"↳ Incoming", humanize.Bytes(uint64(node.stats.IncomingBytes))})
-		entries = append(entries, struct{ key, value string }{"↳ Outgoing", humanize.Bytes(uint64(node.stats.OutgoingBytes))})
+		entries = append(entries, struct{ key, value string }{"-> Incoming", humanize.Bytes(uint64(node.stats.IncomingBytes))})
+		entries = append(entries, struct{ key, value string }{"<- Outgoing", humanize.Bytes(uint64(node.stats.OutgoingBytes))})
 
 		avgBytesPerReq := totalBytes / node.stats.Requests
-		entries = append(entries, struct{ key, value string }{"Avg Bytes per Request", humanize.Bytes(uint64(avgBytesPerReq))})
+		entries = append(entries, struct{ key, value string }{"Avg Bytes", humanize.Bytes(uint64(avgBytesPerReq)) + "/req"})
 	}
 
 	// === ERROR ANALYSIS ===
-	totalErrors := node.stats.Errors4xx + node.stats.Errors5xx
-	if totalErrors > 0 {
-		errorRate := float64(totalErrors) / float64(node.stats.Requests) * 100
-		entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
-
-		if node.stats.Errors4xx > 0 {
-			clientErrorRate := float64(node.stats.Errors4xx) / float64(node.stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
-				node.stats.Errors4xx, clientErrorRate)})
+	stats := node.stats
+	if stats.Requests > 0 {
+		totalErrors := stats.Errors5xx + stats.Errors5xx
+		if stats.Requests > 0 {
+			errorRate := float64(totalErrors) / float64(stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
 		}
-		if node.stats.Errors5xx > 0 {
-			serverErrorRate := float64(node.stats.Errors5xx) / float64(node.stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
-				node.stats.Errors5xx, serverErrorRate)})
+		if totalErrors > 0 {
+			if stats.Errors4xx > 0 {
+				clientErrorRate := float64(stats.Errors4xx) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
+					stats.Errors4xx, clientErrorRate)})
+			}
+			if stats.Errors5xx > 0 {
+				serverErrorRate := float64(stats.Errors5xx) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
+					stats.Errors5xx, serverErrorRate)})
+			}
+			if stats.Canceled > 0 {
+				cancelRate := float64(stats.Canceled) / float64(stats.Requests) * 100
+				entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, cancelRate)})
+			}
 		}
-		if node.stats.Canceled > 0 {
-			cancelRate := float64(node.stats.Canceled) / float64(node.stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", node.stats.Canceled, cancelRate)})
-		}
-	} else {
-		entries = append(entries, struct{ key, value string }{"Error Rate", "No errors detected"})
 	}
 
 	// === REJECTIONS ===
@@ -1429,10 +1399,6 @@ func (node *APISegmentedNode) GetChildren() []MetricChild {
 
 func (node *APISegmentedNode) GetLeafData() map[string]string {
 	data := make(map[string]string)
-
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"] = ""
-	data[fmt.Sprintf("      SEGMENTED: %s", strings.ToUpper(node.endpoint))] = ""
-	data["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"] = ""
 
 	data["Segment Count"] = fmt.Sprintf("%d segments", len(node.segmented.Segments))
 	data["Interval"] = fmt.Sprintf("%d seconds", node.segmented.Interval)
