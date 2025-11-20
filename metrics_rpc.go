@@ -75,7 +75,12 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		}
 		existing, ok := m.LastDay[k]
 		if !ok {
-			m.LastDay[k] = v
+			// Deep copy to avoid sharing slice references
+			vCopy := v
+			if len(v.Segments) > 0 {
+				vCopy.Segments = append([]RPCStats{}, v.Segments...)
+			}
+			m.LastDay[k] = existing
 			continue
 		}
 		existing.Add(&v)
