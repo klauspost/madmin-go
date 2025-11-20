@@ -9,6 +9,8 @@ import (
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
+//msgp:ignore regex:Node$ regex:Navigator$
+
 // ScannerMetrics contains scanner-related metrics
 type ScannerMetrics struct {
 	// Time these metrics were collected

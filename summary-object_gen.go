@@ -2219,6 +2219,10 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Checksum")
 				return
 			}
+			if err != nil {
+				err = msgp.WrapError(err, "Checksum")
+				return
+			}
 		case "ModTime":
 			z.ModTime, err = dc.ReadTimeUTC()
 			if err != nil {
@@ -2428,6 +2432,10 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		case "Checksum":
 			z.Checksum, bts, err = msgp.ReadBytesBytes(bts, z.Checksum)
+			if err != nil {
+				err = msgp.WrapError(err, "Checksum")
+				return
+			}
 			if err != nil {
 				err = msgp.WrapError(err, "Checksum")
 				return

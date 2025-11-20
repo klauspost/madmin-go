@@ -11,6 +11,8 @@ import (
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
+//msgp:ignore regex:Node$ regex:Navigator
+
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
 	Nodes         int        `json:"nodes,omitempty"`         // Number of nodes that have reported data.
@@ -52,21 +54,6 @@ type RejectedAPIStats struct {
 	Header         int64 `json:"header,omitempty"`         // Requests that were rejected due to header signature.
 	Invalid        int64 `json:"invalid,omitempty"`        // Requests that were rejected due to invalid request signature.
 	NotImplemented int64 `json:"notImplemented,omitempty"` // Requests that were rejected due to not implemented API.
-}
-
-// Helper functions for min/max operations
-func minFloat64(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxFloat64(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // Add 'other' to a.
@@ -125,14 +112,14 @@ func (a *APIStats) Merge(other APIStats) {
 	if other.Requests == 0 {
 		bt = at
 	}
-	a.RequestTimeSecsMin = minFloat64(at.RequestTimeSecsMin, bt.RequestTimeSecsMin)
-	a.RequestTimeSecsMax = maxFloat64(at.RequestTimeSecsMax, bt.RequestTimeSecsMax)
-	a.ReqReadSecsMin = minFloat64(at.ReqReadSecsMin, bt.ReqReadSecsMin)
-	a.ReqReadSecsMax = maxFloat64(at.ReqReadSecsMax, bt.ReqReadSecsMax)
-	a.RespSecsMin = minFloat64(at.RespSecsMin, bt.RespSecsMin)
-	a.RespSecsMax = maxFloat64(at.RespSecsMax, bt.RespSecsMax)
-	a.RespTTFBSecsMin = minFloat64(at.RespTTFBSecsMin, bt.RespTTFBSecsMin)
-	a.RespTTFBSecsMax = maxFloat64(at.RespTTFBSecsMax, bt.RespTTFBSecsMax)
+	a.RequestTimeSecsMin = min(at.RequestTimeSecsMin, bt.RequestTimeSecsMin)
+	a.RequestTimeSecsMax = max(at.RequestTimeSecsMax, bt.RequestTimeSecsMax)
+	a.ReqReadSecsMin = min(at.ReqReadSecsMin, bt.ReqReadSecsMin)
+	a.ReqReadSecsMax = max(at.ReqReadSecsMax, bt.ReqReadSecsMax)
+	a.RespSecsMin = min(at.RespSecsMin, bt.RespSecsMin)
+	a.RespSecsMax = max(at.RespSecsMax, bt.RespSecsMax)
+	a.RespTTFBSecsMin = min(at.RespTTFBSecsMin, bt.RespTTFBSecsMin)
+	a.RespTTFBSecsMax = max(at.RespTTFBSecsMax, bt.RespTTFBSecsMax)
 }
 
 // SegmentedAPIMetrics are segmented API metrics.
@@ -1449,36 +1436,6 @@ func (node *APISegmentedNode) ShouldPauseRefresh() bool {
 }
 func (node *APISegmentedNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("segmented endpoint children not yet implemented: %s", name)
-}
-
-
-type ProcessMetricsNode struct {
-	process *ProcessMetrics
-	parent  MetricNode
-	path    string
-}
-
-func (node *ProcessMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "cpu", Description: "Process CPU usage"},
-		{Name: "memory", Description: "Process memory usage"},
-		{Name: "io", Description: "Process IO statistics"},
-		{Name: "context_switches", Description: "Process context switch statistics"},
-		{Name: "page_faults", Description: "Process page fault statistics"},
-	}
-}
-func (node *ProcessMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *ProcessMetricsNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessMetricsNode) GetPath() string                 { return node.path }
-func (node *ProcessMetricsNode) RequiredMetricTypes() MetricType { return MetricsProcess }
-
-func (node *ProcessMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *ProcessMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("process metric sub-navigation not yet implemented for: %s", name)
 }
 
 // generateAPIOverviewDashboard creates a clean API performance dashboard

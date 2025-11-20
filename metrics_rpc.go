@@ -9,6 +9,10 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
+
+//msgp:ignore regex:Node$ regex:Navigator$
+
 // RPCMetrics contains metrics for RPC operations.
 // Metrics are collected on the sender side of RPC calls.
 type RPCMetrics struct {

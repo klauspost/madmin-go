@@ -259,6 +259,10 @@ func (z *ServiceTelemetryOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "PubCert")
 				return
 			}
+			if err != nil {
+				err = msgp.WrapError(err, "PubCert")
+				return
+			}
 		case "SampleRate":
 			z.SampleRate, err = dc.ReadFloat64()
 			if err != nil {
@@ -457,6 +461,10 @@ func (z *ServiceTelemetryOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		case "PubCert":
 			z.PubCert, bts, err = msgp.ReadBytesBytes(bts, z.PubCert)
+			if err != nil {
+				err = msgp.WrapError(err, "PubCert")
+				return
+			}
 			if err != nil {
 				err = msgp.WrapError(err, "PubCert")
 				return

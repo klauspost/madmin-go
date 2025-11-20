@@ -342,7 +342,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "replication":
 		return NewReplicationMetricsNode(node.metrics.Replication, node, fmt.Sprintf("%s/replication", node.path)), nil
 	case "process":
-		return &ProcessMetricsNode{process: node.metrics.Process, parent: node, path: fmt.Sprintf("%s/process", node.path)}, nil
+		return NewProcessMetricsNode(node.metrics.Process, node, fmt.Sprintf("%s/process", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}

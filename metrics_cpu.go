@@ -4,13 +4,127 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/load"
 )
 
-//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
+//go:generate msgp  -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
-// formatNumberCPU function removed - use humanize.Comma instead
+//msgp:ignore regex:Node$ regex:Navigator
+
+//msgp:replace cpu.TimesStat with:cpuTimesStat
+//msgp:replace load.AvgStat with:loadAvgStat
+
+type CPUMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	Nodes int `json:"nodes"` // Note: May be unset for older servers.
+
+	TimesStat *cpu.TimesStat `json:"timesStat"`
+	LoadStat  *load.AvgStat  `json:"loadStat"`
+	CPUCount  int            `json:"cpuCount"`
+
+	// Aggregated CPU information
+	CPUByModel     map[string]int `json:"cpu_by_model,omitempty"`     // ModelName -> count of CPUs
+	TotalMhz       float64        `json:"total_mhz,omitempty"`        // Accumulated MHz
+	TotalCores     int            `json:"total_cores,omitempty"`      // Accumulated cores
+	TotalCacheSize int64          `json:"total_cache_size,omitempty"` // Accumulated cache size in bytes
+
+	// Aggregated CPU frequency information
+	FreqStatsCount          int            `json:"freq_stats_count,omitempty"`           // Number of freq stats (for averaging)
+	GovernorFreq            map[string]int `json:"governor_freq,omitempty"`              // Governor -> count
+	TotalCurrentFreq        uint64         `json:"total_current_freq,omitempty"`         // Accumulated current freq
+	TotalScalingCurrentFreq uint64         `json:"total_scaling_current_freq,omitempty"` // Accumulated scaling current freq
+	MinCPUInfoFreq          uint64         `json:"min_freq,omitempty"`                   // Minimum of CpuinfoMinimumFrequency
+	MaxCPUInfoFreq          uint64         `json:"max_freq,omitempty"`                   // Maximum of CpuinfoMaximumFrequency
+	MinScalingFreq          uint64         `json:"min_scaling_freq,omitempty"`           // Minimum of ScalingMinimumFrequency
+	MaxScalingFreq          uint64         `json:"max_scaling_freq,omitempty"`           // Maximum of ScalingMaximumFrequency
+}
+
+// Merge other into 'm'.
+func (m *CPUMetrics) Merge(other *CPUMetrics) {
+	if other == nil {
+		return
+	}
+	m.Nodes += other.Nodes
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	if m.TimesStat != nil && other.TimesStat != nil {
+		m.TimesStat.User += other.TimesStat.User
+		m.TimesStat.System += other.TimesStat.System
+		m.TimesStat.Idle += other.TimesStat.Idle
+		m.TimesStat.Nice += other.TimesStat.Nice
+		m.TimesStat.Iowait += other.TimesStat.Iowait
+		m.TimesStat.Irq += other.TimesStat.Irq
+		m.TimesStat.Softirq += other.TimesStat.Softirq
+		m.TimesStat.Steal += other.TimesStat.Steal
+		m.TimesStat.Guest += other.TimesStat.Guest
+		m.TimesStat.GuestNice += other.TimesStat.GuestNice
+	} else if m.TimesStat == nil && other.TimesStat != nil {
+		m.TimesStat = other.TimesStat
+	}
+
+	if m.LoadStat != nil && other.LoadStat != nil {
+		m.LoadStat.Load1 += other.LoadStat.Load1
+		m.LoadStat.Load5 += other.LoadStat.Load5
+		m.LoadStat.Load15 += other.LoadStat.Load15
+	} else if m.LoadStat == nil && other.LoadStat != nil {
+		m.LoadStat = other.LoadStat
+	}
+	m.CPUCount += other.CPUCount
+
+	// Merge aggregated CPU information
+	if len(other.CPUByModel) > 0 {
+		if m.CPUByModel == nil {
+			m.CPUByModel = make(map[string]int)
+		}
+		for model, count := range other.CPUByModel {
+			m.CPUByModel[model] += count
+		}
+	}
+	m.TotalMhz += other.TotalMhz
+	m.TotalCores += other.TotalCores
+	m.TotalCacheSize += other.TotalCacheSize
+
+	// Merge aggregated CPU frequency information
+	if len(other.GovernorFreq) > 0 {
+		if m.GovernorFreq == nil {
+			m.GovernorFreq = make(map[string]int)
+		}
+		for governor, count := range other.GovernorFreq {
+			m.GovernorFreq[governor] += count
+		}
+	}
+	m.TotalCurrentFreq += other.TotalCurrentFreq
+	m.TotalScalingCurrentFreq += other.TotalScalingCurrentFreq
+
+	// Handle min/max frequencies properly
+	// Use FreqStatsCount to determine if this is the first merge
+	if other.MinCPUInfoFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinCPUInfoFreq < m.MinCPUInfoFreq {
+			m.MinCPUInfoFreq = other.MinCPUInfoFreq
+		}
+	}
+	if other.MaxCPUInfoFreq > m.MaxCPUInfoFreq {
+		m.MaxCPUInfoFreq = other.MaxCPUInfoFreq
+	}
+	if other.MinScalingFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinScalingFreq < m.MinScalingFreq {
+			m.MinScalingFreq = other.MinScalingFreq
+		}
+	}
+	if other.MaxScalingFreq > m.MaxScalingFreq {
+		m.MaxScalingFreq = other.MaxScalingFreq
+	}
+
+	m.FreqStatsCount += other.FreqStatsCount
+}
 
 // formatFrequency formats frequency values
 func formatFrequency(freq uint64) string {
@@ -188,8 +302,8 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 
 		// Calculate total time for percentages
 		totalTime := times.User + times.System + times.Idle + times.Nice +
-					times.Iowait + times.Irq + times.Softirq + times.Steal +
-					times.Guest + times.GuestNice
+			times.Iowait + times.Irq + times.Softirq + times.Steal +
+			times.Guest + times.GuestNice
 
 		if totalTime > 0 {
 			data["User Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.User/totalTime)*100, times.User)
@@ -343,4 +457,3 @@ func (node *CPUMetricsNavigator) RequiredMetricTypes() MetricType {
 func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - all CPU data shown in main display")
 }
-
