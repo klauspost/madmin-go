@@ -340,7 +340,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "api":
 		return &APIMetricsNode{api: node.metrics.API, parent: node, path: fmt.Sprintf("%s/api", node.path)}, nil
 	case "replication":
-		return &ReplicationMetricsNode{repl: node.metrics.Replication, parent: node, path: fmt.Sprintf("%s/replication", node.path)}, nil
+		return NewReplicationMetricsNode(node.metrics.Replication, node, fmt.Sprintf("%s/replication", node.path)), nil
 	case "process":
 		return &ProcessMetricsNode{process: node.metrics.Process, parent: node, path: fmt.Sprintf("%s/process", node.path)}, nil
 	default:
@@ -733,38 +733,6 @@ func (node *MemMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("mem metric sub-navigation not yet implemented for: %s", name)
 }
 
-type CPUMetricsNode struct {
-	cpu    *CPUMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *CPUMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *CPUMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "times", Description: "CPU time statistics"},
-		{Name: "load", Description: "System load averages"},
-		{Name: "frequency", Description: "CPU frequency information"},
-		{Name: "models", Description: "CPU model information"},
-	}
-}
-func (node *CPUMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *CPUMetricsNode) GetMetricType() MetricType       { return MetricsCPU }
-func (node *CPUMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *CPUMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *CPUMetricsNode) GetPath() string                 { return node.path }
-func (node *CPUMetricsNode) RequiredMetricTypes() MetricType { return MetricsCPU }
-
-func (node *CPUMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *CPUMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("cpu metric sub-navigation not yet implemented for: %s", name)
-}
 
 
 type RuntimeMetricsNode struct {

@@ -322,8 +322,13 @@ func (ns *NavigationState) Refresh() error {
 			}
 
 			var selectedName string
-			if ns.selectedIndex < len(oldChildren) {
-				selectedName = oldChildren[ns.selectedIndex].Name
+			// Account for .. entry when getting selected child name
+			childIndex := ns.selectedIndex
+			if ns.CanNavigateBack() {
+				childIndex-- // Account for .. entry at index 0
+			}
+			if childIndex >= 0 && childIndex < len(oldChildren) {
+				selectedName = oldChildren[childIndex].Name
 			}
 
 			// Try to find the same name in the new children
@@ -338,12 +343,21 @@ func (ns *NavigationState) Refresh() error {
 			}
 
 			if newIndex >= 0 {
-				// Found the same name, use that index
-				ns.selectedIndex = newIndex
+				// Found the same name, account for .. entry when setting selection
+				if ns.CanNavigateBack() {
+					ns.selectedIndex = newIndex + 1 // Account for .. entry at index 0
+				} else {
+					ns.selectedIndex = newIndex
+				}
 			} else {
 				// Name not found, ensure current index is still valid
-				if ns.selectedIndex >= len(children) {
-					ns.selectedIndex = len(children) - 1
+				totalOptions := len(children)
+				if ns.CanNavigateBack() {
+					totalOptions++ // Account for .. entry
+				}
+
+				if ns.selectedIndex >= totalOptions {
+					ns.selectedIndex = totalOptions - 1
 				}
 				if ns.selectedIndex < 0 {
 					ns.selectedIndex = 0

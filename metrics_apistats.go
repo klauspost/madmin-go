@@ -1451,32 +1451,6 @@ func (node *APISegmentedNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("segmented endpoint children not yet implemented: %s", name)
 }
 
-type ReplicationMetricsNode struct {
-	repl   *ReplicationMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *ReplicationMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "active", Description: "Active replication events"},
-		{Name: "queued", Description: "Queued replication events"},
-		{Name: "targets", Description: "Replication statistics by target"},
-	}
-}
-func (node *ReplicationMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *ReplicationMetricsNode) GetMetricType() MetricType       { return MetricsReplication }
-func (node *ReplicationMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ReplicationMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *ReplicationMetricsNode) GetPath() string                 { return node.path }
-func (node *ReplicationMetricsNode) RequiredMetricTypes() MetricType { return MetricsReplication }
-
-func (node *ReplicationMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *ReplicationMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("replication metric sub-navigation not yet implemented for: %s", name)
-}
 
 type ProcessMetricsNode struct {
 	process *ProcessMetrics
