@@ -266,25 +266,24 @@ type MetricsNode struct {
 }
 
 func (node *MetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }
 
 func (node *MetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
-		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "api", Description: "API operation metrics"},
 		{Name: "disk", Description: "Disk usage and performance metrics"},
+		{Name: "rpc", Description: "RPC call statistics"},
+		{Name: "net", Description: "Network interface metrics"},
 		{Name: "os", Description: "Operating system metrics"},
+		{Name: "cpu", Description: "CPU usage and performance metrics"},
+		{Name: "mem", Description: "Memory usage metrics"},
+		{Name: "go", Description: "Go runtime metrics"},
+		{Name: "process", Description: "Process-level system metrics"},
+		{Name: "replication", Description: "Replication metrics"},
+		{Name: "scanner", Description: "Scanner-related metrics"},
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
-		{Name: "net", Description: "Network interface metrics"},
-		{Name: "mem", Description: "Memory usage metrics"},
-		{Name: "cpu", Description: "CPU usage and performance metrics"},
-		{Name: "rpc", Description: "RPC call statistics"},
-		{Name: "go", Description: "Go runtime metrics"},
-		{Name: "api", Description: "API operation metrics"},
-		{Name: "replication", Description: "Replication metrics"},
-		{Name: "process", Description: "Process-level system metrics"},
 	}
 }
 
@@ -767,39 +766,6 @@ func (node *CPUMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("cpu metric sub-navigation not yet implemented for: %s", name)
 }
 
-type RPCMetricsNode struct {
-	rpc    *RPCMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *RPCMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *RPCMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "connections", Description: "RPC connection statistics"},
-		{Name: "last_minute", Description: "Last minute RPC statistics by handler"},
-		{Name: "last_day", Description: "Last day RPC statistics segmented"},
-		{Name: "by_destination", Description: "RPC statistics by destination"},
-		{Name: "by_caller", Description: "RPC statistics by caller"},
-	}
-}
-func (node *RPCMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *RPCMetricsNode) GetMetricType() MetricType       { return MetricsRPC }
-func (node *RPCMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *RPCMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *RPCMetricsNode) GetPath() string                 { return node.path }
-func (node *RPCMetricsNode) RequiredMetricTypes() MetricType { return MetricsRPC }
-
-func (node *RPCMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *RPCMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("rpc metric sub-navigation not yet implemented for: %s", name)
-}
 
 type RuntimeMetricsNode struct {
 	runtime *RuntimeMetrics
