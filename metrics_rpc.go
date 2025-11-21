@@ -444,13 +444,18 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 	for _, handlerName := range handlerNames {
 		segmented := node.rpc.LastDay[handlerName]
 		totalRequests := int64(0)
+		totalTime := float64(0)
 		for _, segment := range segmented.Segments {
 			totalRequests += segment.Requests
+			totalTime += segment.RequestTimeSecs
 		}
-
+		avg := ""
+		if totalRequests > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalRequests))*1000)
+		}
 		children = append(children, MetricChild{
 			Name:        handlerName,
-			Description: fmt.Sprintf("Last day statistics for %s (%d total requests)", handlerName, totalRequests),
+			Description: fmt.Sprintf("Time segmented, %d total requests%s.", totalRequests, avg),
 		})
 	}
 
@@ -544,9 +549,11 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 
 		// Calculate total requests for this time segment across all handlers
 		totalRequests := int64(0)
+		totalTime := float64(0)
 		for _, segmented := range node.rpc.LastDay {
 			if i < len(segmented.Segments) {
 				totalRequests += segmented.Segments[i].Requests
+				totalTime += segmented.Segments[i].RequestTimeSecs
 			}
 		}
 
@@ -555,12 +562,22 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 			continue
 		}
 
+		avg := ""
+		if totalRequests > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalRequests))*1000)
+		}
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
+
 		children = append(children, MetricChild{
 			Name: segmentName,
-			Description: fmt.Sprintf("RPC %s -> %s (%d requests)",
+			Description: fmt.Sprintf("RPC %s%s -> %s (%d requests%s)",
+				day,
 				segmentTime.Local().Format("15:04"),
 				endTime.Local().Format("15:04"),
-				totalRequests),
+				totalRequests, avg),
 		})
 	}
 
@@ -723,13 +740,19 @@ func (node *RPCLastDayHandlerNode) GetChildren() []MetricChild {
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
 		segmentName := segmentTime.UTC().Format("15:04Z")
 
+		avg := fmt.Sprintf(", %.1fms avg", (segment.RequestTimeSecs/float64(segment.Requests))*1000)
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
+
 		children = append(children, MetricChild{
 			Name: segmentName,
-			Description: fmt.Sprintf("%s %s -> %s (%d requests)",
-				node.handlerName,
+			Description: fmt.Sprintf("%s%s -> %s (%d requests%s)",
+				day,
 				segmentTime.Local().Format("15:04"),
 				endTime.Local().Format("15:04"),
-				segment.Requests),
+				segment.Requests, avg),
 		})
 	}
 
@@ -816,17 +839,6 @@ func (node *RPCConnectionsNode) GetLeafData() map[string]string {
 	if node.rpc.Nodes > 0 {
 		connectionRate := float64(node.rpc.Connected) / float64(node.rpc.Nodes) * 100
 		data["Connection Rate"] = fmt.Sprintf("%.1f%%", connectionRate)
-
-		// Health assessment
-		if connectionRate >= 95.0 {
-			data["Health Status"] = "Excellent"
-		} else if connectionRate >= 80.0 {
-			data["Health Status"] = "Good"
-		} else if connectionRate >= 60.0 {
-			data["Health Status"] = "Fair"
-		} else {
-			data["Health Status"] = "Poor"
-		}
 	}
 
 	data["Last Updated"] = node.rpc.CollectedAt.Format("2006-01-02 15:04:05")

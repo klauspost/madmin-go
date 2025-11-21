@@ -175,11 +175,16 @@ func (r *Renderer) RenderError(nav *NavigationState) string {
 
 // RenderContent renders the main content area (children first, then properties)
 func (r *Renderer) RenderContent(nav *NavigationState) string {
+	return r.RenderContentWithScroll(nav, 0, 0)
+}
+
+// RenderContentWithScroll renders content with menu viewport scrolling
+func (r *Renderer) RenderContentWithScroll(nav *NavigationState, menuScrollTop, maxMenuHeight int) string {
 	var content []string
 
 	// Show navigation children first if available, or back navigation for leaf nodes
 	if !nav.IsLeaf() {
-		content = append(content, r.renderChildren(nav))
+		content = append(content, r.renderChildrenWithScroll(nav, menuScrollTop, maxMenuHeight))
 	} else if nav.CanNavigateBack() {
 		// For leaf nodes, still show back navigation
 		content = append(content, r.renderBackNavigation(nav))
@@ -230,6 +235,11 @@ func (r *Renderer) renderBackNavigation(nav *NavigationState) string {
 
 // renderChildren renders the list of child nodes
 func (r *Renderer) renderChildren(nav *NavigationState) string {
+	return r.renderChildrenWithScroll(nav, 0, 0)
+}
+
+// renderChildrenWithScroll renders child nodes with viewport scrolling
+func (r *Renderer) renderChildrenWithScroll(nav *NavigationState, menuScrollTop, maxMenuHeight int) string {
 	children := nav.GetChildren()
 	if len(children) == 0 {
 		if nav.IsRefreshing() {
@@ -254,6 +264,9 @@ func (r *Renderer) renderChildren(nav *NavigationState) string {
 	lines = append(lines, "")
 
 	selectedIndex := nav.GetSelectedIndex()
+
+	// Build all menu items first
+	var allMenuItems []string
 	currentIndex := 0
 
 	// Add .. back navigation as first option if available
@@ -266,7 +279,7 @@ func (r *Renderer) renderChildren(nav *NavigationState) string {
 			// Normal item
 			line = itemStyle.Render("..          ")
 		}
-		lines = append(lines, line)
+		allMenuItems = append(allMenuItems, line)
 		currentIndex = 1
 	}
 
@@ -287,8 +300,20 @@ func (r *Renderer) renderChildren(nav *NavigationState) string {
 				line += " " + descriptionStyle.Render(fmt.Sprintf("- %s", child.Description))
 			}
 		}
-		lines = append(lines, line)
+		allMenuItems = append(allMenuItems, line)
 	}
+
+	// Apply viewport scrolling if needed
+	if maxMenuHeight > 0 && len(allMenuItems) > maxMenuHeight {
+		endIdx := menuScrollTop + maxMenuHeight
+		if endIdx > len(allMenuItems) {
+			endIdx = len(allMenuItems)
+		}
+		allMenuItems = allMenuItems[menuScrollTop:endIdx]
+	}
+
+	// Add the menu items to lines
+	lines = append(lines, allMenuItems...)
 
 	return strings.Join(lines, "\n")
 }

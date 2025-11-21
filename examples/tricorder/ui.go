@@ -5,22 +5,25 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/minio/madmin-go/v4"
 )
 
 // TricorderModel represents the main TUI model
 type TricorderModel struct {
-	nav          *NavigationState
-	renderer     *Renderer
-	config       Config
-	width        int
-	height       int
-	quitting     bool
-	lastPath     string    // Track the current path to detect navigation changes
-	needsClear   bool      // Flag to indicate when we need to clear screen
-	scrollOffset int       // Current scroll position in content
-	lastScroll   int       // Track scroll changes
-	lastEscTime  time.Time // Track last Esc press for double-Esc exit
+	nav           *NavigationState
+	renderer      *Renderer
+	config        Config
+	width         int
+	height        int
+	quitting      bool
+	lastPath      string    // Track the current path to detect navigation changes
+	needsClear    bool      // Flag to indicate when we need to clear screen
+	scrollOffset  int       // Current scroll position in content
+	menuScrollTop int       // Top index of visible menu items
+	lastScroll    int       // Track scroll changes
+	lastSelection int       // Track selection changes
+	lastEscTime   time.Time // Track last Esc press for double-Esc exit
 }
 
 // refreshMsg is sent when auto-refresh timer fires
@@ -38,14 +41,16 @@ func NewTricorderModel(adminClient *madmin.AdminClient, metrics *madmin.Realtime
 	renderer := NewRenderer(80, 24) // Default size
 
 	return &TricorderModel{
-		nav:          nav,
-		renderer:     renderer,
-		config:       config,
-		quitting:     false,
-		lastPath:     nav.GetCurrentPath(),
-		needsClear:   true, // Clear on initial render
-		scrollOffset: 0,
-		lastScroll:   0,
+		nav:           nav,
+		renderer:      renderer,
+		config:        config,
+		quitting:      false,
+		lastPath:      nav.GetCurrentPath(),
+		needsClear:    true, // Clear on initial render
+		scrollOffset:  0,
+		menuScrollTop: 0,
+		lastScroll:    0,
+		lastSelection: nav.GetSelectedIndex(),
 	}
 }
 
@@ -142,8 +147,13 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "k":
 		if hasChildren {
-			// Navigate through menu items
+			// Navigate through menu items with auto-scrolling
+			oldSelection := m.nav.GetSelectedIndex()
 			m.nav.MoveSelection(-1)
+			newSelection := m.nav.GetSelectedIndex()
+
+			// Auto-scroll menu if needed
+			m.adjustMenuScroll(newSelection, oldSelection)
 			return m, nil
 		} else if needsScrolling {
 			// Scroll content up
@@ -155,8 +165,13 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "down", "j":
 		if hasChildren {
-			// Navigate through menu items
+			// Navigate through menu items with auto-scrolling
+			oldSelection := m.nav.GetSelectedIndex()
 			m.nav.MoveSelection(1)
+			newSelection := m.nav.GetSelectedIndex()
+
+			// Auto-scroll menu if needed
+			m.adjustMenuScroll(newSelection, oldSelection)
 			return m, nil
 		} else if needsScrolling {
 			// Just increment scroll and let the main View() method handle bounds
@@ -312,6 +327,56 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func fullWidth(s string, w int) string {
+	return lipgloss.NewStyle().MaxWidth(w).Render(s)
+}
+
+// adjustMenuScroll adjusts the menu viewport to keep selection visible
+func (m *TricorderModel) adjustMenuScroll(newSelection, oldSelection int) {
+	// Only adjust if selection actually changed
+	if newSelection == oldSelection {
+		return
+	}
+
+	// Calculate available height for menu (conservative estimate)
+	// Leave room for header, separator, help, and some data
+	maxMenuHeight := m.height - 8
+	if maxMenuHeight < 5 {
+		maxMenuHeight = 5
+	}
+
+	// Calculate total menu items
+	children := m.nav.GetChildren()
+	totalItems := len(children)
+	if m.nav.CanNavigateBack() {
+		totalItems++ // Account for .. entry
+	}
+
+	// If all items fit, no scrolling needed
+	if totalItems <= maxMenuHeight {
+		m.menuScrollTop = 0
+		return
+	}
+
+	// Adjust scroll to keep selected item visible
+	if newSelection < m.menuScrollTop {
+		// Selection moved above visible area, scroll up
+		m.menuScrollTop = newSelection
+	} else if newSelection >= m.menuScrollTop+maxMenuHeight {
+		// Selection moved below visible area, scroll down
+		m.menuScrollTop = newSelection - maxMenuHeight + 1
+	}
+
+	// Ensure scroll bounds
+	if m.menuScrollTop < 0 {
+		m.menuScrollTop = 0
+	}
+	maxScroll := totalItems - maxMenuHeight
+	if m.menuScrollTop > maxScroll {
+		m.menuScrollTop = maxScroll
+	}
+}
+
 // doRefresh performs a refresh operation
 func (m *TricorderModel) doRefresh(manual bool) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
@@ -330,6 +395,9 @@ func (m *TricorderModel) View() string {
 
 	// Check for changes that require screen clearing
 	currentPath := m.nav.GetCurrentPath()
+	currentSelection := m.nav.GetSelectedIndex()
+
+	// Only clear if there are actual changes
 	needsClear := m.needsClear ||
 		currentPath != m.lastPath ||
 		m.scrollOffset != m.lastScroll
@@ -343,9 +411,11 @@ func (m *TricorderModel) View() string {
 	// Update tracking variables
 	if currentPath != m.lastPath {
 		m.lastPath = currentPath
-		m.scrollOffset = 0 // Reset scroll on navigation
+		m.scrollOffset = 0  // Reset scroll on navigation
+		m.menuScrollTop = 0 // Reset menu scroll on navigation
 	}
 	m.lastScroll = m.scrollOffset
+	m.lastSelection = currentSelection
 
 	// Simple approach: build content and always show help at bottom
 	var parts []string
@@ -359,8 +429,12 @@ func (m *TricorderModel) View() string {
 		parts = append(parts, errorMsg)
 	}
 
-	// Main content
-	mainContent := m.renderer.RenderContent(m.nav)
+	// Main content with menu scrolling
+	maxMenuHeight := m.height - 8 // Conservative estimate for available menu space
+	if maxMenuHeight < 5 {
+		maxMenuHeight = 5
+	}
+	mainContent := m.renderer.RenderContentWithScroll(m.nav, m.menuScrollTop, maxMenuHeight)
 	parts = append(parts, mainContent)
 
 	// Join all parts
@@ -411,5 +485,5 @@ func (m *TricorderModel) View() string {
 	help := m.renderer.RenderHelp()
 	output.WriteString(help)
 
-	return output.String()
+	return fullWidth(output.String(), m.width)
 }
