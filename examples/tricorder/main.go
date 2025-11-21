@@ -166,8 +166,8 @@ func main() {
 	// Create the TUI model - it will handle metrics streaming internally
 	model := NewTricorderModel(adminClient, nil, cfg)
 
-	// Start the TUI
-	program := tea.NewProgram(model)
+	// Start the TUI with alt screen buffer and full screen
+	program := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		log.Fatalf("Error running program: %v", err)
 	}

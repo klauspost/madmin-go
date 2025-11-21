@@ -19,6 +19,7 @@ type TricorderModel struct {
 	lastPath     string    // Track the current path to detect navigation changes
 	needsClear   bool      // Flag to indicate when we need to clear screen
 	scrollOffset int       // Current scroll position in content
+	lastScroll   int       // Track scroll changes
 	lastEscTime  time.Time // Track last Esc press for double-Esc exit
 }
 
@@ -43,7 +44,8 @@ func NewTricorderModel(adminClient *madmin.AdminClient, metrics *madmin.Realtime
 		quitting:     false,
 		lastPath:     nav.GetCurrentPath(),
 		needsClear:   true, // Clear on initial render
-		scrollOffset: 0,    // Start at top
+		scrollOffset: 0,
+		lastScroll:   0,
 	}
 }
 
@@ -65,13 +67,12 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		// Sanity check for reasonable terminal dimensions
-		// Terminal scrollback can be huge, but visible area is typically 20-60 lines
-		if m.height > 60 || m.height <= 0 {
-			m.height = 30 // Use reasonable default for visible area
+		// Use actual terminal dimensions for full screen
+		if m.height <= 0 {
+			m.height = 24 // Fallback if size detection fails
 		}
-		if m.width > 200 || m.width <= 0 {
-			m.width = 100 // Use reasonable default
+		if m.width <= 0 {
+			m.width = 80 // Fallback if size detection fails
 		}
 
 		m.renderer.SetSize(m.width, m.height)
@@ -96,10 +97,7 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == nil {
 			// Clear any previous errors
 			m.nav.ClearError()
-			// Only clear screen for manual refresh, not auto-refresh
-			if msg.manual {
-				m.needsClear = true
-			}
+			// Refresh completed successfully
 		}
 		// Schedule next auto-refresh
 		nextCmd = tea.Tick(m.config.RefreshPeriod, func(t time.Time) tea.Msg {
@@ -182,7 +180,6 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					// Check if navigation actually changed
 					newPath := m.nav.GetCurrentPath()
 					if newPath != oldPath {
-						m.needsClear = true
 						m.scrollOffset = 0 // Reset scroll on navigation
 					}
 				}
@@ -196,9 +193,7 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					// Check if navigation actually changed
 					newPath := m.nav.GetCurrentPath()
 					if newPath != oldPath {
-						m.needsClear = true
 						m.scrollOffset = 0 // Reset scroll on navigation
-						// Debug: Navigation should reset scroll to 0
 					}
 				}
 			}
@@ -213,7 +208,6 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Check if navigation actually changed
 				newPath := m.nav.GetCurrentPath()
 				if newPath != oldPath {
-					m.needsClear = true
 					m.scrollOffset = 0 // Reset scroll on navigation
 				}
 			}
@@ -280,7 +274,6 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Check if navigation actually changed
 				newPath := m.nav.GetCurrentPath()
 				if newPath != oldPath {
-					m.needsClear = true
 					m.scrollOffset = 0 // Reset scroll on navigation
 				}
 			}
@@ -335,119 +328,88 @@ func (m *TricorderModel) View() string {
 
 	var output strings.Builder
 
-	// Only clear screen when we need to (navigation change, refresh, etc.)
-	if m.needsClear {
-		output.WriteString("\033[2J\033[H") // Clear screen and move cursor to top
-		m.needsClear = false // Reset the flag
-	}
-
-	// Build all sections first to measure content
-	header := m.renderer.RenderHeader(m.nav)
-	headerLines := strings.Split(header, "\n")
-
-	var errorLines []string
-	if errorMsg := m.renderer.RenderError(m.nav); errorMsg != "" {
-		errorLines = strings.Split(strings.TrimSpace(errorMsg), "\n")
-	}
-
-	help := m.renderer.RenderHelp()
-	helpLines := strings.Split(help, "\n")
-
-	// Ensure we have valid height (fallback to reasonable default)
-	height := m.height
-	if height <= 0 || height > 60 {
-		height = 30 // Default visible terminal height
-	}
-
-	// Calculate available space for main content more conservatively
-	// Account for: headers, errors, help, separators, spacing, and some buffer
-	reservedLines := len(headerLines) + len(errorLines) + len(helpLines) + 5 // +5 for separators, spacing, and buffer
-	availableHeight := height - reservedLines
-
-	// Ensure minimum but be less conservative now that scrolling works
-	if availableHeight < 8 {
-		availableHeight = 8
-	}
-
-	// Get main content and handle scrolling
-	mainContent := m.renderer.RenderContent(m.nav)
-	contentLines := strings.Split(strings.TrimSpace(mainContent), "\n")
-
-	// Force scroll reset if we're at a different path than expected
+	// Check for changes that require screen clearing
 	currentPath := m.nav.GetCurrentPath()
+	needsClear := m.needsClear ||
+		currentPath != m.lastPath ||
+		m.scrollOffset != m.lastScroll
+
+	// Clear screen if needed
+	if needsClear {
+		output.WriteString("\033[2J\033[H") // Clear entire screen and move cursor to top
+		m.needsClear = false
+	}
+
+	// Update tracking variables
 	if currentPath != m.lastPath {
-		m.scrollOffset = 0 // Reset scroll when path changes
 		m.lastPath = currentPath
-		// Don't clear screen here - only on explicit navigation
+		m.scrollOffset = 0 // Reset scroll on navigation
+	}
+	m.lastScroll = m.scrollOffset
+
+	// Simple approach: build content and always show help at bottom
+	var parts []string
+
+	// Header
+	header := m.renderer.RenderHeader(m.nav)
+	parts = append(parts, header)
+
+	// Error if any
+	if errorMsg := m.renderer.RenderError(m.nav); errorMsg != "" {
+		parts = append(parts, errorMsg)
 	}
 
-	// Calculate scroll bounds - how far we can scroll down
-	maxScroll := len(contentLines) - availableHeight
-	if maxScroll < 0 {
-		maxScroll = 0
+	// Main content
+	mainContent := m.renderer.RenderContent(m.nav)
+	parts = append(parts, mainContent)
+
+	// Join all parts
+	content := strings.Join(parts, "\n")
+	contentLines := strings.Split(content, "\n")
+
+	// Determine available space for content (leave 2 lines for separator + help + buffer)
+	maxContentLines := m.height - 2
+	if maxContentLines < 10 {
+		maxContentLines = 10 // minimum
 	}
 
-	// Ensure scroll offset is within bounds
-	if m.scrollOffset > maxScroll {
-		m.scrollOffset = maxScroll
-	}
-	if m.scrollOffset < 0 {
-		m.scrollOffset = 0
-	}
+	// Apply scrolling if needed
+	if len(contentLines) > maxContentLines {
+		// Scrolling is handled - path change was already processed above
 
-	// Apply scrolling - simpler approach
-	var displayLines []string
+		// Scrolling bounds
+		maxScroll := len(contentLines) - maxContentLines
+		if m.scrollOffset > maxScroll {
+			m.scrollOffset = maxScroll
+		}
+		if m.scrollOffset < 0 {
+			m.scrollOffset = 0
+		}
 
-	if len(contentLines) > availableHeight {
-		// Need scrolling
-		visibleLines := availableHeight
+		// Get visible lines
 		startIdx := m.scrollOffset
-		endIdx := startIdx + visibleLines
-
-		// Ensure bounds are correct
-		if startIdx < 0 {
-			startIdx = 0
-		}
-		if startIdx >= len(contentLines) {
-			startIdx = len(contentLines) - visibleLines
-			if startIdx < 0 {
-				startIdx = 0
-			}
-		}
+		endIdx := startIdx + maxContentLines
 		if endIdx > len(contentLines) {
 			endIdx = len(contentLines)
 		}
-
-		displayLines = append([]string{}, contentLines[startIdx:endIdx]...)
-	} else {
-		// All content fits
-		displayLines = append([]string{}, contentLines...)
+		contentLines = contentLines[startIdx:endIdx]
 	}
 
-	// Assemble final output
-	output.WriteString(header)
-	output.WriteString("\n")
-
-	if len(errorLines) > 0 {
-		for _, line := range errorLines {
-			output.WriteString(line)
-			output.WriteString("\n")
-		}
-		output.WriteString("\n")
-	}
-
-	for _, line := range displayLines {
+	// Build final output
+	for _, line := range contentLines {
 		output.WriteString(line)
 		output.WriteString("\n")
 	}
 
-	// Separator and help
+	// Add separator (only at bottom before help)
 	if m.width > 0 {
 		output.WriteString(strings.Repeat("─", m.width))
 		output.WriteString("\n")
 	}
+
+	// Add help
+	help := m.renderer.RenderHelp()
 	output.WriteString(help)
 
 	return output.String()
 }
-

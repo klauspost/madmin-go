@@ -65,9 +65,7 @@ var (
 
 	helpStyle = lipgloss.NewStyle().
 			Foreground(secondaryColor).
-			Border(lipgloss.RoundedBorder(), true, false, false, false).
-			BorderForeground(secondaryColor).
-			Padding(0, 1)
+			PaddingLeft(1)
 )
 
 // Renderer handles formatting and display of metrics data
@@ -99,7 +97,7 @@ func (r *Renderer) RenderHeader(nav *NavigationState) string {
 	// Get timing info with fixed width
 	var timeDisplay string
 	if nav.IsRefreshing() {
-		timeDisplay = "refreshing"
+		timeDisplay = ""
 	} else {
 		lastRefresh := nav.GetLastRefresh()
 		if !lastRefresh.IsZero() {
@@ -110,7 +108,7 @@ func (r *Renderer) RenderHeader(nav *NavigationState) string {
 				timeDisplay = fmt.Sprintf("%vs ago", int(timeAgo.Seconds()))
 			}
 		} else {
-			timeDisplay = "no refresh"
+			timeDisplay = "loading"
 		}
 	}
 
@@ -124,12 +122,14 @@ func (r *Renderer) RenderHeader(nav *NavigationState) string {
 	// Combine everything in one line
 	var combined string
 	if typeDisplay != "" {
-		combined = fmt.Sprintf("📡 %s [%s | %s]", pathDisplay, timeDisplay, typeDisplay)
+		combined = fmt.Sprintf("AiStor / %s [%s | %s]", pathDisplay, timeDisplay, typeDisplay)
 	} else {
-		combined = fmt.Sprintf("📡 %s [%s]", pathDisplay, timeDisplay)
+		combined = fmt.Sprintf("AiStor / %s [%s]", pathDisplay, timeDisplay)
 	}
 
-	return titleStyle.Render(combined) + "\n"
+	header := titleStyle.Render(combined) + "\n"
+
+	return header
 }
 
 // renderStatus renders the status line with refresh time and errors
@@ -221,7 +221,7 @@ func (r *Renderer) renderBackNavigation(nav *NavigationState) string {
 		line = selectedStyle.Render("► ..")
 	} else {
 		// Normal item (this shouldn't happen for leaf nodes, but just in case)
-		line = itemStyle.Render("  ..")
+		line = itemStyle.Render(".. (back)")
 	}
 	lines = append(lines, line)
 
@@ -261,10 +261,10 @@ func (r *Renderer) renderChildren(nav *NavigationState) string {
 		var line string
 		if selectedIndex == 0 {
 			// Highlighted selection
-			line = selectedStyle.Render("► ..")
+			line = selectedStyle.Render("► .. (back)")
 		} else {
 			// Normal item
-			line = itemStyle.Render("  ..")
+			line = itemStyle.Render("..          ")
 		}
 		lines = append(lines, line)
 		currentIndex = 1
@@ -278,7 +278,7 @@ func (r *Renderer) renderChildren(nav *NavigationState) string {
 			// Highlighted selection
 			line = selectedStyle.Render(fmt.Sprintf("► %s", child.Name))
 			if child.Description != "" {
-				line += " " + descriptionStyle.Render(fmt.Sprintf("- %s", child.Description))
+				line += "  " + descriptionStyle.Render(fmt.Sprintf("- %s", child.Description))
 			}
 		} else {
 			// Normal item
