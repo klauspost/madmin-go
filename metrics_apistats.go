@@ -798,7 +798,7 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 	// Add "All" entry first - shows aggregated time segments
 	children = append(children, MetricChild{
 		Name:        "All",
-		Description: "Aggregated statistics for all API endpoints",
+		Description: "Aggregated 24h statistics for all API endpoints",
 	})
 
 	// Add individual API endpoints, sorted alphabetically
@@ -811,13 +811,18 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 	for _, apiName := range apiNames {
 		segmented := node.api.LastDayAPI[apiName]
 		totalRequests := int64(0)
+		totalTimeSecs := float64(0)
 		for _, segment := range segmented.Segments {
 			totalRequests += segment.Requests
+			totalTimeSecs += segment.RequestTimeSecs
 		}
-
+		avg := ""
+		if totalRequests > 0 {
+			avg = fmt.Sprintf(" %.1fms avg.", (totalTimeSecs/float64(totalRequests))*1000)
+		}
 		children = append(children, MetricChild{
 			Name:        apiName,
-			Description: fmt.Sprintf("Last day statistics for %s (%d total requests)", apiName, totalRequests),
+			Description: fmt.Sprintf("Time segmented - %d total requests.%s", totalRequests, avg),
 		})
 	}
 
@@ -901,12 +906,21 @@ func (node *APILastDayAllNode) GetChildren() []MetricChild {
 			continue
 		}
 
+		avg := ""
+		if requests > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (segmented.Segments[i].RequestTimeSecs/float64(requests))*1000)
+		}
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
 		children = append(children, MetricChild{
 			Name: segmentName,
-			Description: fmt.Sprintf("API %s -> %s (%d requests)",
+			Description: fmt.Sprintf("API %s%s -> %s (%d requests%s)",
+				day,
 				segmentTime.Local().Format("15:04"),
 				endTime.Local().Format("15:04"),
-				requests),
+				requests, avg),
 		})
 	}
 
@@ -993,14 +1007,22 @@ func (node *APILastDayEndpointNode) GetChildren() []MetricChild {
 		if requests == 0 {
 			continue
 		}
+		avg := ""
+		if requests > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (node.segmented.Segments[i].RequestTimeSecs/float64(requests))*1000)
+		}
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
 
 		children = append(children, MetricChild{
 			Name: segmentName,
-			Description: fmt.Sprintf("%s %s -> %s (%d requests)",
-				node.apiName,
+			Description: fmt.Sprintf("%s%s -> %s (%d requests%s)",
+				day,
 				segmentTime.Local().Format("15:04"),
 				endTime.Local().Format("15:04"),
-				requests),
+				requests, avg),
 		})
 	}
 
