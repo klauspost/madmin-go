@@ -43,7 +43,7 @@ func parseFlags() Config {
 	flag.BoolVar(&cfg.UseSSL, "tls", false, "Use SSL/TLS connection")
 
 	var types string
-	flag.StringVar(&types, "types", "", "Comma-separated metric types (scanner,cpu,mem,disk,os,net,rpc,api,process)")
+	flag.StringVar(&types, "types", "", "Comma-separated metric types (scanner,cpu,mem,disk,os,net,rpc,api,runtime,process)")
 	var refresh string
 	flag.StringVar(&refresh, "refresh", "3s", "Refresh interval (e.g., 1s, 30s, 1m)")
 
@@ -56,7 +56,9 @@ func parseFlags() Config {
 		fmt.Fprintf(os.Stderr, "  ↑/↓     Navigate between options\n")
 		fmt.Fprintf(os.Stderr, "  Enter   Navigate into selected item\n")
 		fmt.Fprintf(os.Stderr, "  Esc     Go back to parent\n")
-		fmt.Fprintf(os.Stderr, "  r       Refresh current data\n")
+		fmt.Fprintf(os.Stderr, "  Home    Go to first item (..)\n")
+		fmt.Fprintf(os.Stderr, "  End     Go to last item\n")
+		fmt.Fprintf(os.Stderr, "  F5      Refresh current data\n")
 		fmt.Fprintf(os.Stderr, "  q       Quit application\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s                                  # Connect to default MinIO\n", os.Args[0])

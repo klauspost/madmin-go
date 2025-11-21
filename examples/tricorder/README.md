@@ -78,7 +78,9 @@ go run . -endpoint secure.minio.com:9000 -ssl -access-key admin -secret-key secr
 | `↓` / `j` | Move selection down |
 | `Enter` / `Space` | Navigate into selected item |
 | `Esc` / `Backspace` | Go back to parent |
-| `r` | Refresh current data |
+| `Home` | Go to first item (..) |
+| `End` | Go to last item |
+| `F5` | Refresh current data |
 | `q` / `Ctrl+C` | Quit application |
 
 ## Navigation Paths
@@ -149,7 +151,7 @@ Available options (6):
   active_paths     - Currently active scan paths
   excessive_paths  - Paths marked as having excessive entries
 
-Navigation: ↑/↓ Move  Enter Select  Esc Back  r Refresh  q Quit
+Navigation: ↑/↓ Move  Enter Select  Esc Back  F5 Refresh  q Quit
 ```
 
 ## Development
@@ -185,7 +187,7 @@ The application is structured into several modules:
 ### Navigation Issues
 
 - Use `Esc` to go back if you get lost
-- Press `r` to refresh if data seems stale
+- Press `F5` to refresh if data seems stale
 - Check error messages at the top of the screen
 
 ## License

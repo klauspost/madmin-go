@@ -336,7 +336,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "rpc":
 		return &RPCMetricsNode{rpc: node.metrics.RPC, parent: node, path: fmt.Sprintf("%s/rpc", node.path)}, nil
 	case "go":
-		return &RuntimeMetricsNode{runtime: node.metrics.Go, parent: node, path: fmt.Sprintf("%s/go", node.path)}, nil
+		return NewRuntimeMetricsNavigator(node.metrics.Go, node, fmt.Sprintf("%s/go", node.path)), nil
 	case "api":
 		return &APIMetricsNode{api: node.metrics.API, parent: node, path: fmt.Sprintf("%s/api", node.path)}, nil
 	case "replication":
@@ -735,36 +735,3 @@ func (node *MemMetricsNode) GetChild(name string) (MetricNode, error) {
 
 
 
-type RuntimeMetricsNode struct {
-	runtime *RuntimeMetrics
-	parent  MetricNode
-	path    string
-}
-
-func (node *RuntimeMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *RuntimeMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "uint_metrics", Description: "Go runtime uint64 metrics"},
-		{Name: "float_metrics", Description: "Go runtime float64 metrics"},
-		{Name: "histogram_metrics", Description: "Go runtime histogram metrics"},
-		{Name: "gc", Description: "Garbage collection metrics"},
-		{Name: "memory", Description: "Go memory statistics"},
-	}
-}
-func (node *RuntimeMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *RuntimeMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *RuntimeMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *RuntimeMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *RuntimeMetricsNode) GetPath() string                 { return node.path }
-func (node *RuntimeMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
-
-func (node *RuntimeMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *RuntimeMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("runtime metric sub-navigation not yet implemented for: %s", name)
-}

@@ -11,16 +11,17 @@ import (
 
 // NavigationState manages the current state of navigation through metrics
 type NavigationState struct {
-	adminClient   *madmin.AdminClient
-	config        Config
-	navigator     madmin.MetricNavigator
-	currentNode   madmin.MetricNode
-	currentPath   string
-	pathHistory   []string // Navigation history for back functionality
-	selectedIndex int      // Currently selected child index
-	lastRefresh   time.Time
-	refreshing    bool
-	errorMessage  string
+	adminClient      *madmin.AdminClient
+	config           Config
+	navigator        madmin.MetricNavigator
+	currentNode      madmin.MetricNode
+	currentPath      string
+	pathHistory      []string // Navigation history for back functionality
+	selectedIndex    int      // Currently selected child index
+	lastSelectedChild string   // Name of child we navigated into (for smart back navigation)
+	lastRefresh      time.Time
+	refreshing       bool
+	errorMessage     string
 }
 
 // NewNavigationState creates a new navigation state
@@ -176,6 +177,7 @@ func (ns *NavigationState) NavigateInto() error {
 
 	// Update navigation state
 	ns.pathHistory = append(ns.pathHistory, ns.currentPath)
+	ns.lastSelectedChild = selectedChild.Name // Track the child we're navigating into
 	ns.currentNode = childNode
 	ns.currentPath = childNode.GetPath()
 	// Set cursor to first actual item (skip .. entry since we now have history)
@@ -215,12 +217,32 @@ func (ns *NavigationState) NavigateBack() error {
 
 	ns.currentNode = parentNode
 	ns.currentPath = previousPath
-	// Set cursor to first actual item (skip .. entry if present)
-	if len(parentNode.GetChildren()) > 0 && len(ns.pathHistory) > 0 {
-		ns.selectedIndex = 1 // Skip .. entry, start on first real item
-	} else {
-		ns.selectedIndex = 0
+
+	// Smart cursor positioning - try to position cursor on the item we just returned from
+	targetIndex := 0
+	if ns.lastSelectedChild != "" && len(parentNode.GetChildren()) > 0 {
+		// Find the child we came from
+		children := parentNode.GetChildren()
+		for i, child := range children {
+			if child.Name == ns.lastSelectedChild {
+				targetIndex = i
+				if ns.CanNavigateBack() {
+					targetIndex++ // Account for .. entry at index 0
+				}
+				break
+			}
+		}
 	}
+
+	// Fallback if not found or no lastSelectedChild
+	if targetIndex == 0 {
+		if len(parentNode.GetChildren()) > 0 && len(ns.pathHistory) > 0 {
+			targetIndex = 1 // Skip .. entry, start on first real item
+		}
+	}
+
+	ns.selectedIndex = targetIndex
+	ns.lastSelectedChild = "" // Clear after use
 	ns.errorMessage = ""
 
 	return nil

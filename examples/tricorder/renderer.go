@@ -472,7 +472,7 @@ func (r *Renderer) formatMetricType(metricType madmin.MetricType) string {
 // RenderHelp renders the help/instructions
 func (r *Renderer) RenderHelp() string {
 	helpText := []string{
-		"Navigation: ↑/↓ Move/Scroll  Enter Select  Esc Back  PgUp/PgDn Page  r Refresh  q Quit",
+		"Navigation: ↑/↓ Move/Scroll  Enter Select  Esc Back  Home/End First/Last  PgUp/PgDn Page  F5 Refresh  q Quit",
 	}
 
 	return helpStyle.Render(strings.Join(helpText, " | "))

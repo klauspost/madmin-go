@@ -120,7 +120,7 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 
-	case "r":
+	case "f5":
 		// Manual refresh
 		if !m.nav.IsRefreshing() {
 			return m, m.doRefresh(true) // true = manual refresh
@@ -234,6 +234,25 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if needsScrolling {
 			// Page down - just add a reasonable amount and let View() handle bounds
 			m.scrollOffset += 5
+			return m, nil
+		}
+
+	case "home":
+		if hasChildren {
+			// Go to first item (.. if available, otherwise first child)
+			m.nav.SetSelectedIndex(0)
+			return m, nil
+		}
+
+	case "end":
+		if hasChildren {
+			// Go to last item
+			children := m.nav.GetChildren()
+			totalOptions := len(children)
+			if m.nav.CanNavigateBack() {
+				totalOptions++ // Account for .. entry
+			}
+			m.nav.SetSelectedIndex(totalOptions - 1)
 			return m, nil
 		}
 	}
