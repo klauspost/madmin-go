@@ -274,6 +274,12 @@ func (ns *NavigationState) Refresh() error {
 	ns.refreshing = true
 	ns.errorMessage = ""
 
+	// Can't refresh if no admin client (import mode)
+	if ns.adminClient == nil {
+		ns.refreshing = false
+		return fmt.Errorf("refresh not available in import mode")
+	}
+
 	// Get fresh metrics using a short context to get just one sample
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -415,6 +421,11 @@ func (ns *NavigationState) GetErrorMessage() string {
 // ClearError clears the current error message
 func (ns *NavigationState) ClearError() {
 	ns.errorMessage = ""
+}
+
+// SetErrorMessage sets an error message for display
+func (ns *NavigationState) SetErrorMessage(msg string) {
+	ns.errorMessage = msg
 }
 
 // GetBreadcrumbs returns a breadcrumb trail for the current path

@@ -22,7 +22,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/klauspost/compress/zstd"
 	"github.com/minio/madmin-go/v4"
+	"github.com/tinylib/msgp/msgp"
 )
 
 type Config struct {
@@ -32,6 +34,7 @@ type Config struct {
 	UseSSL        bool
 	MetricTypes   []string
 	RefreshPeriod time.Duration
+	InputFile     string // Path to import compressed metrics file
 }
 
 func parseFlags() Config {
@@ -41,6 +44,7 @@ func parseFlags() Config {
 	flag.StringVar(&cfg.AccessKey, "access-key", "minio", "MinIO access key")
 	flag.StringVar(&cfg.SecretKey, "secret-key", "minio123", "MinIO secret key")
 	flag.BoolVar(&cfg.UseSSL, "tls", false, "Use SSL/TLS connection")
+	flag.StringVar(&cfg.InputFile, "in", "", "Import compressed metrics from file instead of connecting to server")
 
 	var types string
 	flag.StringVar(&types, "types", "", "Comma-separated metric types (scanner,cpu,mem,disk,os,net,rpc,api,runtime,process)")
@@ -58,12 +62,13 @@ func parseFlags() Config {
 		fmt.Fprintf(os.Stderr, "  Esc     Go back to parent\n")
 		fmt.Fprintf(os.Stderr, "  Home    Go to first item (..)\n")
 		fmt.Fprintf(os.Stderr, "  End     Go to last item\n")
-		fmt.Fprintf(os.Stderr, "  F5      Refresh current data\n")
+		fmt.Fprintf(os.Stderr, "  Ctrl+R  Refresh current data\n")
 		fmt.Fprintf(os.Stderr, "  q       Quit application\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s                                  # Connect to default MinIO\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -endpoint prod.example.com:9000  # Custom endpoint\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -types scanner,cpu,mem           # Specific metrics only\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s                                    # Connect to default MinIO\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -endpoint prod.example.com:9000    # Custom endpoint\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -types scanner,cpu,mem             # Specific metrics only\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -in metrics_25-11-21-22_31.msgp.zst # Import from file\n", os.Args[0])
 	}
 
 	flag.Parse()
@@ -154,21 +159,126 @@ func getMetricOptions(cfg Config) madmin.MetricsOptions {
 func main() {
 	cfg := parseFlags()
 
-	// Create MinIO admin client
-	adminClient, err := createAdminClient(cfg)
-	if err != nil {
-		log.Fatalf("Failed to setup MinIO connection: %v", err)
+	var adminClient *madmin.AdminClient
+	var initialMetrics *madmin.RealtimeMetrics
+
+	if cfg.InputFile != "" {
+		// Load metrics from file instead of connecting to server
+		fmt.Printf("Loading metrics from file: %s\n", cfg.InputFile)
+		metrics, err := loadMetricsFromFile(cfg.InputFile)
+		if err != nil {
+			log.Fatalf("Failed to load metrics from file: %v", err)
+		}
+		initialMetrics = metrics
+		fmt.Printf("Loaded metrics from file successfully\n")
+	} else {
+		// Create MinIO admin client for live connection
+		client, err := createAdminClient(cfg)
+		if err != nil {
+			log.Fatalf("Failed to setup MinIO connection: %v", err)
+		}
+		adminClient = client
+		fmt.Printf("Connected to MinIO at %s\n", cfg.Endpoint)
 	}
 
-	fmt.Printf("Connected to MinIO at %s\n", cfg.Endpoint)
 	fmt.Printf("Starting Project Tricorder...\n")
 
-	// Create the TUI model - it will handle metrics streaming internally
-	model := NewTricorderModel(adminClient, nil, cfg)
+	// Create the TUI model
+	model := NewTricorderModel(adminClient, initialMetrics, cfg)
 
 	// Start the TUI with alt screen buffer and full screen
 	program := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		log.Fatalf("Error running program: %v", err)
 	}
+}
+
+// collectAndSaveMetrics collects metrics data and saves it to a compressed file
+func collectAndSaveMetrics(adminClient *madmin.AdminClient, config Config, issueNum string) (string, error) {
+	// Create filename with timestamp
+	now := time.Now()
+	filename := fmt.Sprintf("metrics_%s.msgp.zst", now.Format("06-01-02-15_04"))
+
+	// Create the file
+	file, err := os.Create(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	// Create zstd compressor
+	encoder, err := zstd.NewWriter(file, zstd.WithEncoderLevel(zstd.SpeedBetterCompression))
+	if err != nil {
+		return "", fmt.Errorf("failed to create zstd encoder: %v", err)
+	}
+	defer encoder.Close()
+
+	// Collect metrics with required flags
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var opts madmin.MetricsOptions
+	opts.Type = madmin.MetricsAll
+	opts.Flags.Add(madmin.MetricsDayStats, madmin.MetricsByHost, madmin.MetricsByDisk)
+	opts.N = 1
+
+	// Collect single metrics sample
+	var metricsData *madmin.RealtimeMetrics
+
+	err = adminClient.Metrics(ctx, opts, func(m madmin.RealtimeMetrics) {
+		metricsData = &m
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to collect metrics: %v", err)
+	}
+
+	if metricsData == nil {
+		return "", fmt.Errorf("no metrics data received")
+	}
+
+	// Stream msgpack encoding directly to compressed writer
+	writer := msgp.NewWriter(encoder)
+	if err := metricsData.EncodeMsg(writer); err != nil {
+		return "", fmt.Errorf("failed to encode metrics: %v", err)
+	}
+
+	if err := writer.Flush(); err != nil {
+		return "", fmt.Errorf("failed to flush msgpack writer: %v", err)
+	}
+
+	// Ensure compressor flushes all data
+	if err := encoder.Close(); err != nil {
+		return "", fmt.Errorf("failed to close compressor: %v", err)
+	}
+
+	return filename, nil
+}
+
+// loadMetricsFromFile loads metrics data from a compressed msgpack file
+func loadMetricsFromFile(filename string) (*madmin.RealtimeMetrics, error) {
+	// Open the file
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Create zstd decompressor
+	decoder, err := zstd.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create zstd decoder: %v", err)
+	}
+	defer decoder.Close()
+
+	// Create msgpack reader
+	reader := msgp.NewReader(decoder)
+
+	// Decode the metrics
+	var metrics madmin.RealtimeMetrics
+	if err := metrics.DecodeMsg(reader); err != nil {
+		return nil, fmt.Errorf("failed to decode metrics: %v", err)
+	}
+
+	return &metrics, nil
 }

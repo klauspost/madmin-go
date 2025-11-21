@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,18 +13,22 @@ import (
 
 // TricorderModel represents the main TUI model
 type TricorderModel struct {
-	nav           *NavigationState
-	renderer      *Renderer
-	config        Config
-	width         int
-	height        int
-	quitting      bool
-	lastPath      string    // Track the current path to detect navigation changes
-	scrollOffset  int       // Current scroll position in content
-	menuScrollTop int       // Top index of visible menu items
-	lastScroll    int       // Track scroll changes
-	lastSelection int       // Track selection changes
-	lastEscTime   time.Time // Track last Esc press for double-Esc exit
+	nav            *NavigationState
+	renderer       *Renderer
+	config         Config
+	width          int
+	height         int
+	quitting       bool
+	lastPath       string    // Track the current path to detect navigation changes
+	scrollOffset   int       // Current scroll position in content
+	menuScrollTop  int       // Top index of visible menu items
+	lastScroll     int       // Track scroll changes
+	lastSelection  int       // Track selection changes
+	lastEscTime    time.Time // Track last Esc press for double-Esc exit
+	inputMode      bool      // True when in input dialog mode
+	inputPrompt    string    // Prompt text for input dialog
+	inputValue     string    // Current input value
+	inputCallback  func(string) tea.Cmd // Callback when input is submitted
 }
 
 // refreshMsg is sent when auto-refresh timer fires
@@ -32,6 +38,13 @@ type refreshMsg struct{}
 type refreshCompleteMsg struct {
 	err    error
 	manual bool // true if this was a manual refresh (should clear screen)
+}
+
+// dataUploadMsg is sent when data upload operation completes
+type dataUploadMsg struct {
+	err      error
+	filename string
+	issued   string // issue number if provided
 }
 
 // NewTricorderModel creates a new TUI model
@@ -108,6 +121,20 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		return m, nextCmd
 
+	case dataUploadMsg:
+		// Data upload completed - show result message briefly
+		if msg.err != nil {
+			// Set error message in navigation state for display
+			m.nav.SetErrorMessage(fmt.Sprintf("Upload failed: %v", msg.err))
+		} else {
+			if msg.issued != "" {
+				m.nav.SetErrorMessage(fmt.Sprintf("✓ Data saved to %s (Issue: %s)", msg.filename, msg.issued))
+			} else {
+				m.nav.SetErrorMessage(fmt.Sprintf("✓ Data saved to %s", msg.filename))
+			}
+		}
+		return m, nil
+
 	default:
 		return m, nil
 	}
@@ -115,16 +142,32 @@ func (m *TricorderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyPress processes keyboard input
 func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle input dialog mode
+	if m.inputMode {
+		return m.handleInputDialog(msg)
+	}
+
 	// Handle global keys first
 	switch msg.String() {
 	case "ctrl+c", "q":
 		m.quitting = true
 		return m, tea.Quit
 
-	case "f5":
-		// Manual refresh
-		if !m.nav.IsRefreshing() {
+	case "ctrl+r":
+		// Manual refresh - only available when connected to live server
+		if m.nav.adminClient == nil {
+			m.nav.SetErrorMessage("Refresh not available - currently viewing imported data")
+		} else if !m.nav.IsRefreshing() {
 			return m, m.doRefresh(true) // true = manual refresh
+		}
+		return m, nil
+
+	case "ctrl+u":
+		// Upload data functionality - only available when connected to live server
+		if m.nav.adminClient == nil {
+			m.nav.SetErrorMessage("Upload not available - currently viewing imported data")
+		} else {
+			return m.startDataUpload(), nil
 		}
 		return m, nil
 	}
@@ -385,6 +428,11 @@ func (m *TricorderModel) View() string {
 		return "Goodbye! 👋"
 	}
 
+	// Handle input dialog overlay
+	if m.inputMode {
+		return m.renderInputDialog()
+	}
+
 	var output strings.Builder
 
 	// Check for changes that require screen clearing
@@ -469,4 +517,105 @@ func (m *TricorderModel) View() string {
 	output.WriteString(help)
 
 	return lipgloss.NewStyle().MaxWidth(m.width).Height(m.height).Render(output.String())
+}
+
+// startDataUpload initiates the data upload process by showing input dialog
+func (m *TricorderModel) startDataUpload() *TricorderModel {
+	m.inputMode = true
+	m.inputPrompt = "Enter issue number (max 5 digits, or press Enter to skip):"
+	m.inputValue = ""
+	m.inputCallback = m.processDataUpload
+	return m
+}
+
+// handleInputDialog processes input dialog key events
+func (m *TricorderModel) handleInputDialog(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		// Submit input
+		callback := m.inputCallback
+		value := m.inputValue
+
+		// Reset input mode
+		m.inputMode = false
+		m.inputPrompt = ""
+		m.inputValue = ""
+		m.inputCallback = nil
+
+		// Execute callback with input value
+		if callback != nil {
+			return m, callback(value)
+		}
+		return m, nil
+
+	case "escape", "ctrl+c":
+		// Cancel input
+		m.inputMode = false
+		m.inputPrompt = ""
+		m.inputValue = ""
+		m.inputCallback = nil
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Delete character
+		if len(m.inputValue) > 0 {
+			m.inputValue = m.inputValue[:len(m.inputValue)-1]
+		}
+		return m, nil
+
+	default:
+		// Add character if valid
+		if msg.Type == tea.KeyRunes {
+			char := msg.String()
+			// Only allow digits and limit to 5 characters
+			if matched, _ := regexp.MatchString("^[0-9]$", char); matched && len(m.inputValue) < 5 {
+				m.inputValue += char
+			}
+		}
+		return m, nil
+	}
+}
+
+// processDataUpload handles the actual data upload process
+func (m *TricorderModel) processDataUpload(issueNum string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		filename, err := collectAndSaveMetrics(m.nav.adminClient, m.config, issueNum)
+		return dataUploadMsg{
+			err:      err,
+			filename: filename,
+			issued:   issueNum,
+		}
+	})
+}
+
+// renderInputDialog renders the input dialog overlay
+func (m *TricorderModel) renderInputDialog() string {
+	var output strings.Builder
+
+	// Add some spacing
+	for i := 0; i < m.height/2-3; i++ {
+		output.WriteString("\n")
+	}
+
+	// Create dialog box style
+	dialogStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#74AA04")).
+		Padding(1, 2).
+		Width(50).
+		Align(lipgloss.Center)
+
+	// Dialog content - shorter text
+	content := "Enter issue number (max 5 digits)\nOr press Enter to skip\n\nInput: " + m.inputValue
+	if len(m.inputValue) == 0 {
+		content += "_" // Show cursor
+	}
+	content += "\n\nEnter = Submit  Esc = Cancel"
+
+	dialog := dialogStyle.Render(content)
+
+	// Center the dialog
+	centeredDialog := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
+
+	return centeredDialog
 }
