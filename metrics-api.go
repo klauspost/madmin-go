@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -137,7 +138,19 @@ func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
 
 func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
-		{Name: "aggregated", Description: "Aggregated metrics across all nodes"},
+		{Name: "api", Description: "API operation metrics"},
+		{Name: "disk", Description: "Disk usage and performance metrics"},
+		{Name: "rpc", Description: "RPC call statistics"},
+		{Name: "net", Description: "Network interface metrics"},
+		{Name: "os", Description: "Operating system metrics"},
+		{Name: "cpu", Description: "CPU usage and performance metrics"},
+		{Name: "mem", Description: "Memory usage metrics"},
+		{Name: "go", Description: "Go runtime metrics"},
+		{Name: "process", Description: "Process-level system metrics"},
+		{Name: "replication", Description: "Replication metrics"},
+		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "batch_jobs", Description: "Batch job execution metrics"},
+		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_disk", Description: "Metrics broken down by individual disk"},
 		{Name: "by_disk_set", Description: "Metrics broken down by disk set"},
@@ -154,26 +167,11 @@ func (node *RealtimeMetricsNode) GetLeafData() map[string]string {
 		data["Collection Errors"] = strconv.Itoa(len(node.metrics.Errors))
 	}
 
-	// Add host information
-	for i, host := range node.metrics.Hosts {
-		if i < 10 { // Limit to first 10 hosts to avoid clutter
-			data[fmt.Sprintf("Host %d", i+1)] = host
-		}
-	}
-
-	if len(node.metrics.Hosts) > 10 {
-		data["Additional Hosts"] = fmt.Sprintf("%d more...", len(node.metrics.Hosts)-10)
-	}
-
-	// Show error summary
+	// Show error summary (limited to first 3 errors)
 	for i, err := range node.metrics.Errors {
-		if i < 3 { // Limit to first 3 errors
+		if i < 3 {
 			data[fmt.Sprintf("Error %d", i+1)] = err
 		}
-	}
-
-	if len(node.metrics.Errors) > 3 {
-		data["Additional Errors"] = fmt.Sprintf("%d more...", len(node.metrics.Errors)-3)
 	}
 
 	return data
@@ -215,8 +213,35 @@ func (node *RealtimeMetricsNode) ShouldPauseRefresh() bool {
 
 func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
-	case "aggregated":
-		return &MetricsNode{metrics: &node.metrics.Aggregated, parent: node, path: "aggregated"}, nil
+	// Individual metric types - route directly from root
+	case "scanner":
+		return NewScannerMetricsNode(node.metrics.Aggregated.Scanner, node, "scanner"), nil
+	case "disk":
+		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "disk"), nil
+	case "os":
+		return NewOSMetricsNavigator(node.metrics.Aggregated.OS, node, "os"), nil
+	case "batch_jobs":
+		return &BatchJobMetricsNode{batch: node.metrics.Aggregated.BatchJobs, parent: node, path: "batch_jobs"}, nil
+	case "site_resync":
+		return &SiteResyncMetricsNode{resync: node.metrics.Aggregated.SiteResync, parent: node, path: "site_resync"}, nil
+	case "net":
+		return NewNetMetricsNavigator(node.metrics.Aggregated.Net, node, "net"), nil
+	case "mem":
+		return NewMemMetricsNavigator(node.metrics.Aggregated.Mem, node, "mem"), nil
+	case "cpu":
+		return NewCPUMetricsNavigator(node.metrics.Aggregated.CPU, node, "cpu"), nil
+	case "rpc":
+		return &RPCMetricsNode{rpc: node.metrics.Aggregated.RPC, parent: node, path: "rpc"}, nil
+	case "go":
+		return NewRuntimeMetricsNavigator(node.metrics.Aggregated.Go, node, "go"), nil
+	case "api":
+		return &APIMetricsNode{api: node.metrics.Aggregated.API, parent: node, path: "api"}, nil
+	case "replication":
+		return NewReplicationMetricsNode(node.metrics.Aggregated.Replication, node, "replication"), nil
+	case "process":
+		return NewProcessMetricsNode(node.metrics.Aggregated.Process, node, "process"), nil
+
+	// Grouping nodes - preserved as-is
 	case "by_host":
 		return &MapNode{
 			data:        node.metrics.ByHost,
@@ -330,7 +355,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "net":
 		return NewNetMetricsNavigator(node.metrics.Net, node, fmt.Sprintf("%s/net", node.GetPath())), nil
 	case "mem":
-		return &MemMetricsNode{mem: node.metrics.Mem, parent: node, path: fmt.Sprintf("%s/mem", node.path)}, nil
+		return NewMemMetricsNavigator(node.metrics.Mem, node, fmt.Sprintf("%s/mem", node.path)), nil
 	case "cpu":
 		return NewCPUMetricsNavigator(node.metrics.CPU, node, fmt.Sprintf("%s/cpu", node.path)), nil
 	case "rpc":
@@ -425,19 +450,40 @@ func (node *MapNode) GetChildren() []MetricChild {
 	switch data := node.data.(type) {
 	case map[string]Metrics:
 		var children []MetricChild
+		var keys []string
+		// Extract and sort keys
 		for k := range data {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		// Create children in sorted order
+		for _, k := range keys {
 			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Metrics for %s", k)})
 		}
 		return children
 	case map[string]DiskMetric:
 		var children []MetricChild
+		var keys []string
+		// Extract and sort keys
 		for k := range data {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		// Create children in sorted order
+		for _, k := range keys {
 			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Disk metrics for %s", k)})
 		}
 		return children
 	case map[int]map[int]DiskMetric:
 		var children []MetricChild
+		var keys []int
+		// Extract and sort keys
 		for k := range data {
+			keys = append(keys, k)
+		}
+		sort.Ints(keys)
+		// Create children in sorted order
+		for _, k := range keys {
 			children = append(children, MetricChild{Name: fmt.Sprintf("%d", k), Description: fmt.Sprintf("Disk set %d", k)})
 		}
 		return children
@@ -447,16 +493,8 @@ func (node *MapNode) GetChildren() []MetricChild {
 }
 
 func (node *MapNode) GetLeafData() map[string]string {
-	children := node.GetChildren()
-	data := map[string]string{
-		"path":      node.path,
-		"map_size":  strconv.Itoa(node.getMapSize()),
-		"key_count": strconv.Itoa(len(children)),
-	}
-	for i, key := range children {
-		data[fmt.Sprintf("key_%d", i)] = key.Name
-	}
-	return data
+	// Return empty data - no information displayed for by_host/by_disk navigation
+	return map[string]string{}
 }
 
 func (node *MapNode) GetPath() string {
@@ -701,37 +739,6 @@ func (node *SiteResyncMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("site resync metric sub-navigation not yet implemented for: %s", name)
 }
 
-type MemMetricsNode struct {
-	mem    *MemMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *MemMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *MemMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "info", Description: "Memory usage information"},
-		{Name: "swap", Description: "Swap space information"},
-		{Name: "cgroup", Description: "Cgroup memory limits"},
-	}
-}
-func (node *MemMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *MemMetricsNode) GetMetricType() MetricType       { return MetricsMem }
-func (node *MemMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *MemMetricsNode) GetPath() string                 { return node.path }
-func (node *MemMetricsNode) RequiredMetricTypes() MetricType { return MetricsMem }
-
-func (node *MemMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *MemMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("mem metric sub-navigation not yet implemented for: %s", name)
-}
 
 
 
