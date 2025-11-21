@@ -18,7 +18,6 @@ type TricorderModel struct {
 	height        int
 	quitting      bool
 	lastPath      string    // Track the current path to detect navigation changes
-	needsClear    bool      // Flag to indicate when we need to clear screen
 	scrollOffset  int       // Current scroll position in content
 	menuScrollTop int       // Top index of visible menu items
 	lastScroll    int       // Track scroll changes
@@ -46,7 +45,6 @@ func NewTricorderModel(adminClient *madmin.AdminClient, metrics *madmin.Realtime
 		config:        config,
 		quitting:      false,
 		lastPath:      nav.GetCurrentPath(),
-		needsClear:    true, // Clear on initial render
 		scrollOffset:  0,
 		menuScrollTop: 0,
 		lastScroll:    0,
@@ -327,10 +325,6 @@ func (m *TricorderModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func fullWidth(s string, w int) string {
-	return lipgloss.NewStyle().MaxWidth(w).Render(s)
-}
-
 // adjustMenuScroll adjusts the menu viewport to keep selection visible
 func (m *TricorderModel) adjustMenuScroll(newSelection, oldSelection int) {
 	// Only adjust if selection actually changed
@@ -396,17 +390,6 @@ func (m *TricorderModel) View() string {
 	// Check for changes that require screen clearing
 	currentPath := m.nav.GetCurrentPath()
 	currentSelection := m.nav.GetSelectedIndex()
-
-	// Only clear if there are actual changes
-	needsClear := m.needsClear ||
-		currentPath != m.lastPath ||
-		m.scrollOffset != m.lastScroll
-
-	// Clear screen if needed
-	if needsClear {
-		output.WriteString("\033[2J\033[H") // Clear entire screen and move cursor to top
-		m.needsClear = false
-	}
 
 	// Update tracking variables
 	if currentPath != m.lastPath {
@@ -485,5 +468,5 @@ func (m *TricorderModel) View() string {
 	help := m.renderer.RenderHelp()
 	output.WriteString(help)
 
-	return fullWidth(output.String(), m.width)
+	return lipgloss.NewStyle().MaxWidth(m.width).Height(m.height).Render(output.String())
 }

@@ -14,7 +14,7 @@ import (
 // Styles for the UI
 var (
 	// Colors
-	primaryColor   = lipgloss.Color("#6bcf7f") // Green
+	primaryColor   = lipgloss.Color("#74AA04") // Green
 	secondaryColor = lipgloss.Color("#7c7c7c") // Gray
 	errorColor     = lipgloss.Color("#ff6b6b") // Red
 	warningColor   = lipgloss.Color("#ffd93d") // Yellow

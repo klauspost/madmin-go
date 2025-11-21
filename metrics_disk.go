@@ -420,7 +420,7 @@ func (node *DiskLastMinuteNode) GetLeafData() map[string]string {
 			data["TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
 				avgTime, humanize.Bytes(uint64(avgSize)), rps, humanize.Comma(int64(totalCount)))
 		} else {
-			data["TOTAL"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
+			data["00:Total"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
 				avgTime, rps, humanize.Comma(int64(totalCount)))
 		}
 	}
@@ -434,7 +434,7 @@ func (node *DiskLastMinuteNode) GetLeafData() map[string]string {
 
 	for _, opType := range operations {
 		action := node.ops[opType]
-		if action.Count > 0 && action.AccTime > 0 {
+		if action.Count > 0 {
 			avgTime := action.AccTime / float64(action.Count) * 1000 // Convert to milliseconds
 			rps := float64(action.Count) / action.AccTime
 
