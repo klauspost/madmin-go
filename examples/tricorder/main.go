@@ -219,7 +219,7 @@ func collectAndSaveMetrics(adminClient *madmin.AdminClient, config Config, issue
 
 	var opts madmin.MetricsOptions
 	opts.Type = madmin.MetricsAll
-	opts.Flags.Add(madmin.MetricsDayStats, madmin.MetricsByHost, madmin.MetricsByDisk)
+	opts.Flags.Add(madmin.MetricsDayStats, madmin.MetricsByHost, madmin.MetricsByDisk, madmin.MetricsByDiskSet)
 	opts.N = 1
 
 	// Collect single metrics sample

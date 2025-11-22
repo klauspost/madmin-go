@@ -265,7 +265,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 			path:        "by_disk",
 			nodeFactory: func(key string, value interface{}) MetricNode {
 				if diskMetric, ok := value.(DiskMetric); ok {
-					return &DiskMetricNode{diskMetric: &diskMetric, parent: node, path: fmt.Sprintf("by_disk/%s", key)}
+					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", key))
 				}
 				return nil
 			},
@@ -373,63 +373,6 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	}
 }
 
-// DiskMetricNode handles DiskMetric navigation
-type DiskMetricNode struct {
-	diskMetric *DiskMetric
-	parent     MetricNode
-	path       string
-}
-
-func (node *DiskMetricNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *DiskMetricNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "space", Description: "Disk space information"},
-		{Name: "lifetime_ops", Description: "Lifetime disk operations"},
-		{Name: "last_minute", Description: "Last minute disk operations"},
-		{Name: "last_day", Description: "Last day segmented disk operations"},
-		{Name: "io_stats", Description: "Disk IO statistics"},
-		{Name: "healing", Description: "Disk healing information"},
-		{Name: "cache", Description: "Disk cache statistics"},
-	}
-}
-
-func (node *DiskMetricNode) GetLeafData() map[string]string {
-	return nil // DiskMetricNode is now a navigation node
-}
-
-func (node *DiskMetricNode) GetMetricType() MetricType {
-	return MetricsDisk
-}
-
-func (node *DiskMetricNode) GetMetricFlags() MetricFlags {
-	return 0
-}
-
-func (node *DiskMetricNode) GetParent() MetricNode {
-	return node.parent
-}
-
-func (node *DiskMetricNode) GetPath() string {
-	return node.path
-}
-
-func (node *DiskMetricNode) RequiredMetricTypes() MetricType {
-	return MetricsDisk
-}
-
-func (node *DiskMetricNode) ShouldPauseRefresh() bool {
-	return false
-}
-
-func (node *DiskMetricNode) GetChild(name string) (MetricNode, error) {
-	// TODO: Implement proper disk metric sub-navigation
-	// For now return an error indicating child navigation is not yet implemented
-	return nil, fmt.Errorf("disk metric sub-navigation not yet implemented for: %s", name)
-}
 
 // MapNode handles dynamic map-based navigation
 type MapNode struct {
@@ -633,7 +576,7 @@ func (node *DiskSetMapNode) GetChild(name string) (MetricNode, error) {
 			path:        fmt.Sprintf("%s/pool_%d", node.path, poolID),
 			nodeFactory: func(key string, value interface{}) MetricNode {
 				if diskMetric, ok := value.(DiskMetric); ok {
-					return &DiskMetricNode{diskMetric: &diskMetric, parent: node, path: fmt.Sprintf("%s/pool_%d/set_%s", node.path, poolID, key)}
+					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/pool_%d/set_%s", node.path, poolID, key))
 				}
 				return nil
 			},
