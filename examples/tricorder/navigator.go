@@ -290,6 +290,13 @@ func (ns *NavigationState) Refresh() error {
 	if ns.currentNode != nil {
 		opts.Flags |= ns.currentNode.GetMetricFlags()
 	}
+
+	// Traverse up parent chain to collect breakdown flags from any ancestor nodes
+	node := ns.currentNode
+	for node != nil {
+		opts.Flags |= node.GetMetricFlags()
+		node = node.GetParent()
+	}
 	var metrics madmin.RealtimeMetrics
 	var gotMetrics bool
 

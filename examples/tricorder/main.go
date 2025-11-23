@@ -150,9 +150,6 @@ func getMetricOptions(cfg Config) madmin.MetricsOptions {
 		opts.Type = madmin.MetricsAll
 	}
 
-	// Enable aggregation flags for better navigation
-	opts.Flags.Add(madmin.MetricsByHost, madmin.MetricsByDisk, madmin.MetricsByDiskSet)
-
 	return opts
 }
 

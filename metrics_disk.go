@@ -325,10 +325,10 @@ func (node *DiskLifetimeOpsNode) GetLeafData() map[string]string {
 		rps := float64(totalCount) / totalTime
 		if totalBytes > 0 {
 			avgSize := float64(totalBytes) / float64(totalCount)
-			data["TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
+			data["00:TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
 				avgTime, humanize.Bytes(uint64(avgSize)), rps, humanize.Comma(int64(totalCount)))
 		} else {
-			data["TOTAL"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
+			data["00:TOTAL"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
 				avgTime, rps, humanize.Comma(int64(totalCount)))
 		}
 	}
@@ -417,7 +417,7 @@ func (node *DiskLastMinuteNode) GetLeafData() map[string]string {
 		rps := float64(totalCount) / totalTime
 		if totalBytes > 0 {
 			avgSize := float64(totalBytes) / float64(totalCount)
-			data["TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
+			data["00:TOTAL"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
 				avgTime, humanize.Bytes(uint64(avgSize)), rps, humanize.Comma(int64(totalCount)))
 		} else {
 			data["00:Total"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
