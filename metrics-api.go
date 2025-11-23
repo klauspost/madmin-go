@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dustin/go-humanize"
 )
 
 // MetricNavigator provides navigation functionality
@@ -373,7 +375,6 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	}
 }
 
-
 // MapNode handles dynamic map-based navigation
 type MapNode struct {
 	data        interface{}
@@ -510,25 +511,162 @@ func (node *DiskSetMapNode) ShouldPauseUpdates() bool {
 
 func (node *DiskSetMapNode) GetChildren() []MetricChild {
 	var children []MetricChild
-	for k := range node.data {
+	for poolID, pool := range node.data {
+		// Calculate pool-level statistics for better description
+		var poolDisks int
+		var poolSets int = len(pool)
+		var poolHealthyDisks int
+		var poolCurrentIOs uint64
+		for _, diskSet := range pool {
+			poolDisks += diskSet.NDisks
+			poolHealthyDisks += (diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing)
+			poolCurrentIOs += diskSet.IOStatsMinute.CurrentIOs
+		}
+
+		description := fmt.Sprintf("Pool %d with %d sets, %d disks (%d healthy), %d current IOs",
+			poolID, poolSets, poolDisks, poolHealthyDisks, poolCurrentIOs)
+
 		children = append(children, MetricChild{
-			Name:        fmt.Sprintf("pool_%d", k),
-			Description: fmt.Sprintf("Disk set pool %d", k),
+			Name:        fmt.Sprintf("pool_%d", poolID),
+			Description: description,
 		})
 	}
 	return children
 }
 
 func (node *DiskSetMapNode) GetLeafData() map[string]string {
-	children := node.GetChildren()
-	data := map[string]string{
-		"path":       node.path,
-		"pools":      strconv.Itoa(len(node.data)),
-		"pool_count": strconv.Itoa(len(children)),
+	data := map[string]string{}
+
+	// Calculate aggregated statistics across all pools and sets
+	var totalSets int
+	var totalDisks int
+	var totalHealthyDisks int
+	var totalOfflineDisks int
+	var totalHealingDisks int
+	var totalHangingDisks int
+	var totalCapacity, totalUsed uint64
+	var totalOps uint64
+	var totalBytes uint64
+
+	// First pass: calculate pool-level aggregated metrics
+	poolMetrics := make(map[int]struct {
+		sets    int
+		ops     uint64
+		accTime float64
+		ioOps   uint64
+		ioBytes uint64
+	})
+
+	for poolID, pool := range node.data {
+		poolStat := poolMetrics[poolID]
+		for setID, diskSet := range pool {
+			totalSets++
+			totalDisks += diskSet.NDisks
+			totalHealthyDisks += (diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing)
+			totalOfflineDisks += diskSet.Offline
+			totalHealingDisks += diskSet.Healing
+			totalHangingDisks += diskSet.Hanging
+
+			// Aggregate storage space
+			totalCapacity += diskSet.Space.Free.Total + diskSet.Space.Used.Total
+			totalUsed += diskSet.Space.Used.Total
+
+			// Aggregate operations from last minute for cluster totals
+			for _, action := range diskSet.LastMinute {
+				totalOps += action.Count
+				totalBytes += action.Bytes
+				poolStat.ops += action.Count
+				poolStat.accTime += action.AccTime
+			}
+
+			// Aggregate pool-level metrics
+			poolStat.sets++
+
+			// Aggregate current IO statistics for this pool
+			ioStat := diskSet.IOStatsMinute
+			poolStat.ioOps += ioStat.ReadIOs + ioStat.WriteIOs + ioStat.DiscardIOs + ioStat.FlushIOs
+			poolStat.ioBytes += ioStat.ReadSectors + ioStat.WriteSectors + ioStat.DiscardSectors // Sectors represent data transferred
+
+			_ = setID // Mark as used
+		}
+		poolMetrics[poolID] = poolStat
 	}
-	for i, child := range children {
-		data[fmt.Sprintf("pool_%d", i)] = child.Name
+
+	// Second pass: create pool-level display entries
+	for poolID, poolStat := range poolMetrics {
+		var opsDisplay string
+		var ioDisplay string
+
+		// Calculate performance metrics for this pool
+		if poolStat.ops > 0 && poolStat.accTime > 0 {
+			opsPerSec := float64(poolStat.ops) / poolStat.accTime
+			avgTimeMs := (poolStat.accTime / float64(poolStat.ops)) * 1000
+			opsDisplay = fmt.Sprintf("%.1f ops/s, %.2fms avg", opsPerSec, avgTimeMs)
+		} else {
+			opsDisplay = "No recent activity"
+		}
+
+		// Calculate current IO metrics for this pool
+		if poolStat.ioOps > 0 || poolStat.ioBytes > 0 {
+			ioDisplay = fmt.Sprintf(", %s IO/s", humanize.Bytes(poolStat.ioBytes))
+		} else {
+			ioDisplay = ", No current IO"
+		}
+
+		poolLabel := fmt.Sprintf("Pool %d", poolID)
+		poolValue := fmt.Sprintf("%s%s (%d sets)", opsDisplay, ioDisplay, poolStat.sets)
+		data[poolLabel] = poolValue
 	}
+
+	// Summary statistics
+	data["00:Cluster Summary"] = fmt.Sprintf("%d pools, %d sets, %d total disks",
+		len(node.data), totalSets, totalDisks)
+
+	if totalDisks > 0 {
+		healthPercent := float64(totalHealthyDisks) / float64(totalDisks) * 100.0
+		var healthStatus string
+		switch {
+		case healthPercent >= 95:
+			healthStatus = "Excellent"
+		case healthPercent >= 85:
+			healthStatus = "Good"
+		case healthPercent >= 70:
+			healthStatus = "Warning"
+		default:
+			healthStatus = "Critical"
+		}
+
+		data["01:Disk Health"] = fmt.Sprintf("%s - %d of %d disks healthy (%.1f%%)",
+			healthStatus, totalHealthyDisks, totalDisks, healthPercent)
+
+		if totalOfflineDisks > 0 || totalHangingDisks > 0 || totalHealingDisks > 0 {
+			var issues []string
+			if totalOfflineDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d offline", totalOfflineDisks))
+			}
+			if totalHangingDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d hanging", totalHangingDisks))
+			}
+			if totalHealingDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d healing", totalHealingDisks))
+			}
+			data["02:Issues"] = strings.Join(issues, ", ")
+		}
+	}
+
+	// Storage capacity summary
+	if totalCapacity > 0 {
+		usagePercent := float64(totalUsed) / float64(totalCapacity) * 100.0
+		data["03:Storage Capacity"] = fmt.Sprintf("%s used of %s total (%.1f%% used)",
+			humanize.Bytes(totalUsed), humanize.Bytes(totalCapacity), usagePercent)
+	}
+
+	// Activity summary
+	if totalOps > 0 {
+		data["03:Recent Activity"] = fmt.Sprintf("%s operations, %s transferred (last minute)",
+			humanize.Comma(int64(totalOps)), humanize.Bytes(totalBytes))
+	}
+
 	return data
 }
 
@@ -568,22 +706,173 @@ func (node *DiskSetMapNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	if sets, exists := node.data[poolID]; exists {
-		return &MapNode{
-			data:        sets,
-			metricType:  node.metricType,
-			metricFlags: node.metricFlags,
-			parent:      node,
-			path:        fmt.Sprintf("%s/pool_%d", node.path, poolID),
-			nodeFactory: func(key string, value interface{}) MetricNode {
-				if diskMetric, ok := value.(DiskMetric); ok {
-					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/pool_%d/set_%s", node.path, poolID, key))
-				}
-				return nil
-			},
-		}, nil
+		return NewDiskSetPoolNavigator(poolID, sets, node.metricType, node.metricFlags, node, fmt.Sprintf("%s/pool_%d", node.path, poolID)), nil
 	}
 
 	return nil, fmt.Errorf("pool not found: %d", poolID)
+}
+
+// DiskSetPoolNavigator provides enhanced navigation for disk set pools
+type DiskSetPoolNavigator struct {
+	poolID      int
+	poolSets    map[int]DiskMetric
+	metricType  MetricType
+	metricFlags MetricFlags
+	parent      MetricNode
+	path        string
+}
+
+func NewDiskSetPoolNavigator(poolID int, poolSets map[int]DiskMetric, metricType MetricType, metricFlags MetricFlags, parent MetricNode, path string) *DiskSetPoolNavigator {
+	return &DiskSetPoolNavigator{
+		poolID:      poolID,
+		poolSets:    poolSets,
+		metricType:  metricType,
+		metricFlags: metricFlags,
+		parent:      parent,
+		path:        path,
+	}
+}
+
+func (node *DiskSetPoolNavigator) ShouldPauseUpdates() bool {
+	return false
+}
+
+func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
+	var children []MetricChild
+	for setID, diskSet := range node.poolSets {
+		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing
+		currentIOs := diskSet.IOStatsMinute.CurrentIOs
+		description := fmt.Sprintf("Set %d with %d disks (%d healthy), %d current IOs",
+			setID, diskSet.NDisks, healthyDisks, currentIOs)
+
+		children = append(children, MetricChild{
+			Name:        fmt.Sprintf("set_%d", setID),
+			Description: description,
+		})
+	}
+
+	// Sort children by set ID for consistent ordering
+	sort.Slice(children, func(i, j int) bool {
+		return children[i].Name < children[j].Name
+	})
+
+	return children
+}
+
+func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
+	data := map[string]string{}
+
+	// Pool-level aggregated statistics
+	var totalSets int = len(node.poolSets)
+	var totalDisks int
+	var totalHealthyDisks int
+	var totalOfflineDisks int
+	var totalHealingDisks int
+	var totalHangingDisks int
+	var totalCapacity, totalUsed uint64
+	var totalOps uint64
+	var totalBytes uint64
+
+	for setID, diskSet := range node.poolSets {
+		totalDisks += diskSet.NDisks
+		totalHealthyDisks += (diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing)
+		totalOfflineDisks += diskSet.Offline
+		totalHealingDisks += diskSet.Healing
+		totalHangingDisks += diskSet.Hanging
+
+		// Aggregate storage space
+		totalCapacity += diskSet.Space.Free.Total + diskSet.Space.Used.Total
+		totalUsed += diskSet.Space.Used.Total
+
+		// Aggregate operations from last minute
+		for _, action := range diskSet.LastMinute {
+			totalOps += action.Count
+			totalBytes += action.Bytes
+		}
+
+		// Individual set performance metrics
+		var setOps uint64
+		var setTime float64
+		for _, action := range diskSet.LastMinute {
+			setOps += action.Count
+			setTime += action.AccTime
+		}
+
+		var opsDisplay string
+		if setOps > 0 && setTime > 0 {
+			opsPerSec := float64(setOps) / setTime
+			avgTimeMs := (setTime / float64(setOps)) * 1000 // Convert to milliseconds
+			opsDisplay = fmt.Sprintf("%.1f ops/s, %.2fms avg time", opsPerSec, avgTimeMs)
+		} else {
+			opsDisplay = "No recent activity"
+		}
+
+		data[fmt.Sprintf("Set %d", setID)] = opsDisplay
+	}
+
+	// Pool summary
+	data["00:Pool Summary"] = fmt.Sprintf("Pool %d: %d sets, %d total disks",
+		node.poolID, totalSets, totalDisks)
+
+	if totalDisks > 0 {
+		healthPercent := float64(totalHealthyDisks) / float64(totalDisks) * 100.0
+		data["01:Pool Health"] = fmt.Sprintf("%d of %d disks healthy (%.1f%%)",
+			totalHealthyDisks, totalDisks, healthPercent)
+
+		if totalOfflineDisks > 0 || totalHangingDisks > 0 || totalHealingDisks > 0 {
+			var issues []string
+			if totalOfflineDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d offline", totalOfflineDisks))
+			}
+			if totalHangingDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d hanging", totalHangingDisks))
+			}
+			if totalHealingDisks > 0 {
+				issues = append(issues, fmt.Sprintf("%d healing", totalHealingDisks))
+			}
+			data["02:Pool Issues"] = strings.Join(issues, ", ")
+		}
+	}
+
+	// Pool storage capacity
+	if totalCapacity > 0 {
+		usagePercent := float64(totalUsed) / float64(totalCapacity) * 100.0
+		data["03:Pool Storage"] = fmt.Sprintf("%s used of %s total (%.1f%% used)",
+			humanize.Bytes(totalUsed), humanize.Bytes(totalCapacity), usagePercent)
+	}
+
+	// Pool activity summary
+	if totalOps > 0 {
+		data["04:Pool Activity"] = fmt.Sprintf("%s operations, %s transferred (last minute)",
+			humanize.Comma(int64(totalOps)), humanize.Bytes(totalBytes))
+	}
+
+	return data
+}
+
+func (node *DiskSetPoolNavigator) GetMetricType() MetricType       { return node.metricType }
+func (node *DiskSetPoolNavigator) GetMetricFlags() MetricFlags     { return node.metricFlags }
+func (node *DiskSetPoolNavigator) GetParent() MetricNode           { return node.parent }
+func (node *DiskSetPoolNavigator) GetPath() string                 { return node.path }
+func (node *DiskSetPoolNavigator) RequiredMetricTypes() MetricType { return node.metricType }
+func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool        { return false }
+
+func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
+	if !strings.HasPrefix(name, "set_") {
+		return nil, fmt.Errorf("invalid set name format: %s", name)
+	}
+
+	setIDStr := strings.TrimPrefix(name, "set_")
+	var setID int
+	if _, err := fmt.Sscanf(setIDStr, "%d", &setID); err != nil {
+		return nil, fmt.Errorf("invalid set ID: %s", setIDStr)
+	}
+
+	if diskMetric, exists := node.poolSets[setID]; exists {
+		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID)), nil
+	}
+
+	return nil, fmt.Errorf("set not found: %d", setID)
 }
 
 // Stub implementations for all other metric node types
@@ -681,7 +970,3 @@ func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
 func (node *SiteResyncMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("site resync metric sub-navigation not yet implemented for: %s", name)
 }
-
-
-
-
