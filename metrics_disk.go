@@ -486,13 +486,85 @@ func NewDiskLastDayNode(segmented map[string]SegmentedDiskActions, parent Metric
 }
 
 func (node *DiskLastDayNode) GetChildren() []MetricChild {
-	// Return no children - display day totals as leaf data instead
-	return []MetricChild{}
+	if node.segmented == nil {
+		return []MetricChild{}
+	}
+
+	var children []MetricChild
+
+	// Collect operation types with their total counts
+	type operationInfo struct {
+		name       string
+		totalOps   uint64
+		totalBytes uint64
+		totalTime  float64
+	}
+	var operations []operationInfo
+
+	// Add each operation type that has data as a child
+	for operationType, segmented := range node.segmented {
+		// Calculate total stats for this operation type
+		var totalOps, totalBytes uint64
+		var totalTime float64
+		for _, segment := range segmented.Segments {
+			totalOps += segment.Count
+			totalBytes += segment.Bytes
+			totalTime += segment.AccTime
+		}
+
+		// Only include operation types that have activity
+		if totalOps > 0 {
+			operations = append(operations, operationInfo{
+				name:       operationType,
+				totalOps:   totalOps,
+				totalBytes: totalBytes,
+				totalTime:  totalTime,
+			})
+		}
+	}
+
+	// Sort operations alphabetically by name
+	sort.Slice(operations, func(i, j int) bool {
+		return operations[i].name < operations[j].name
+	})
+
+	// Create children from sorted operations
+	for _, op := range operations {
+		// Build stats description in the requested format
+		var description string
+		if op.totalOps > 0 && op.totalTime > 0 {
+			avgTime := (op.totalTime / float64(op.totalOps)) * 1000 // Convert to milliseconds
+			rps := float64(op.totalOps) / op.totalTime
+
+			if op.totalBytes > 0 {
+				avgSize := float64(op.totalBytes) / float64(op.totalOps)
+				description = fmt.Sprintf("avg: %.2fms, avg sz: %s, rps: %.2f, ops: %s",
+					avgTime,
+					humanize.Bytes(uint64(avgSize)),
+					rps,
+					humanize.Comma(int64(op.totalOps)))
+			} else {
+				description = fmt.Sprintf("avg: %.2fms, rps: %.2f, ops: %s",
+					avgTime,
+					rps,
+					humanize.Comma(int64(op.totalOps)))
+			}
+		} else {
+			description = fmt.Sprintf("ops: %s", humanize.Comma(int64(op.totalOps)))
+		}
+
+		children = append(children, MetricChild{
+			Name:        op.name,
+			Description: description,
+		})
+	}
+
+	return children
 }
 
 func (node *DiskLastDayNode) GetLeafData() map[string]string {
 	if node.segmented == nil {
-		return map[string]string{"Operation Types": "0"}
+		return map[string]string{"Total": "No operation data"}
 	}
 
 	data := map[string]string{}
@@ -509,40 +581,26 @@ func (node *DiskLastDayNode) GetLeafData() map[string]string {
 		}
 	}
 
-	// Add overall day summary
+	// Add single total stat line
 	if totalCount > 0 && totalTime > 0 {
 		avgTime := totalTime / float64(totalCount) * 1000 // Convert to milliseconds
 		rps := float64(totalCount) / totalTime
+
 		if totalBytes > 0 {
 			avgSize := float64(totalBytes) / float64(totalCount)
-			data["00:Info"] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, n: %s",
-				avgTime, humanize.Bytes(uint64(avgSize)), rps, humanize.Comma(int64(totalCount)))
+			data["Total"] = fmt.Sprintf("avg: %.2fms, avg sz: %s, rps: %.2f, ops: %s",
+				avgTime,
+				humanize.Bytes(uint64(avgSize)),
+				rps,
+				humanize.Comma(int64(totalCount)))
 		} else {
-			data["00:Info"] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, n: %s",
-				avgTime, rps, humanize.Comma(int64(totalCount)))
+			data["Total"] = fmt.Sprintf("avg: %.2fms, rps: %.2f, ops: %s",
+				avgTime,
+				rps,
+				humanize.Comma(int64(totalCount)))
 		}
-	}
-
-	for opType, segmented := range node.segmented {
-		total := segmented.Total()
-
-		if total.Count > 0 && total.AccTime > 0 {
-			avgTime := total.AccTime / float64(total.Count) * 1000 // Convert to milliseconds
-			rps := float64(total.Count) / total.AccTime
-			minTime := total.MinTime * 1000 // Convert to milliseconds
-			maxTime := total.MaxTime * 1000 // Convert to milliseconds
-
-			if total.Bytes > 0 {
-				avgSize := float64(total.Bytes) / float64(total.Count)
-				data[opType] = fmt.Sprintf("avg time: %.2fms, avg size: %s, rps: %.2f, min: %.1fms max: %.1fs, n: %s",
-					avgTime, humanize.Bytes(uint64(avgSize)), rps, minTime, maxTime, humanize.Comma(int64(total.Count)))
-			} else {
-				data[opType] = fmt.Sprintf("avg time: %.2fms, rps: %.2f, min: %.1fms max: %.1fs, n: %s",
-					avgTime, rps, minTime, maxTime, humanize.Comma(int64(total.Count)))
-			}
-		} else {
-			data[opType] = fmt.Sprintf("n: %s", humanize.Comma(int64(total.Count)))
-		}
+	} else {
+		data["Total"] = fmt.Sprintf("ops: %s", humanize.Comma(int64(totalCount)))
 	}
 
 	return data
@@ -558,8 +616,16 @@ func (node *DiskLastDayNode) ShouldPauseRefresh() bool {
 	return true
 }
 func (node *DiskLastDayNode) GetChild(name string) (MetricNode, error) {
-	// Could implement navigation into individual segmented data
-	return nil, fmt.Errorf("disk segmented navigation not yet implemented for: %s", name)
+	if node.segmented == nil {
+		return nil, fmt.Errorf("no segmented data available")
+	}
+
+	// Look for the requested operation type
+	if segmented, exists := node.segmented[name]; exists {
+		return NewDiskLastDayOperationNode(name, segmented, node, fmt.Sprintf("%s/%s", node.path, name)), nil
+	}
+
+	return nil, fmt.Errorf("operation type not found: %s", name)
 }
 
 // DiskIOStatsNode handles navigation for disk IO statistics
@@ -712,7 +778,54 @@ func NewDiskIODailyStatsNode(disk *DiskMetric, parent MetricNode, path string) *
 	return &DiskIODailyStatsNode{disk: disk, parent: parent, path: path}
 }
 
-func (node *DiskIODailyStatsNode) GetChildren() []MetricChild { return []MetricChild{} }
+func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
+	if node.disk == nil || len(node.disk.IOStatsDay.Segments) == 0 {
+		return []MetricChild{}
+	}
+
+	var children []MetricChild
+
+	// Add "Total" entry first
+	children = append(children, MetricChild{
+		Name:        "Total",
+		Description: "Total IO statistics across all time segments",
+	})
+
+	dailyStats := &node.disk.IOStatsDay
+
+	// Add time segments, most recent first (filter out empty segments)
+	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
+		segmentTime := dailyStats.FirstTime.Add(time.Duration(i*dailyStats.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(dailyStats.Interval) * time.Second)
+		segmentName := segmentTime.UTC().Format("15:04Z")
+
+		// Get total IO count for this segment
+		segment := dailyStats.Segments[i]
+		totalIOs := segment.ReadIOs + segment.WriteIOs + segment.DiscardIOs + segment.FlushIOs
+
+		// Filter out time segments with no IO activity
+		if totalIOs == 0 {
+			continue
+		}
+
+		// Determine day prefix
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
+
+		children = append(children, MetricChild{
+			Name: segmentName,
+			Description: fmt.Sprintf("IO %s%s -> %s (%s IOs)",
+				day,
+				segmentTime.Local().Format("15:04"),
+				endTime.Local().Format("15:04"),
+				humanize.Comma(int64(totalIOs))),
+		})
+	}
+
+	return children
+}
 
 func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
@@ -803,7 +916,30 @@ func (node *DiskIODailyStatsNode) ShouldPauseRefresh() bool {
 	return true
 }
 func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("daily IO stats is a leaf node")
+	if node.disk == nil {
+		return nil, fmt.Errorf("no disk metrics available")
+	}
+
+	dailyStats := &node.disk.IOStatsDay
+
+	// Handle "Total" entry
+	if name == "Total" {
+		return &DiskIOTotalNode{
+			dailyStats: *dailyStats,
+			parent:     node,
+			path:       fmt.Sprintf("%s/Total", node.path),
+		}, nil
+	}
+
+	// Handle time segments - find by time format (with UTC indicator)
+	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
+		segmentTime := dailyStats.FirstTime.Add(time.Duration(i*dailyStats.Interval) * time.Second)
+		if segmentTime.UTC().Format("15:04Z") == name {
+			return NewDiskIOTimeSegmentNode(dailyStats.Segments[i], segmentTime, dailyStats.Interval, node, fmt.Sprintf("%s/%s", node.path, name)), nil
+		}
+	}
+
+	return nil, fmt.Errorf("time segment not found: %s", name)
 }
 
 // DiskHealingNode handles navigation for disk healing information
@@ -846,6 +982,406 @@ func (node *DiskHealingNode) ShouldPauseRefresh() bool {
 }
 func (node *DiskHealingNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk healing is a leaf node")
+}
+
+// DiskLastDayOperationNode handles navigation for a specific operation type within segmented last day operations
+type DiskLastDayOperationNode struct {
+	operationType string
+	segmented     SegmentedDiskActions
+	parent        MetricNode
+	path          string
+}
+
+func NewDiskLastDayOperationNode(operationType string, segmented SegmentedDiskActions, parent MetricNode, path string) *DiskLastDayOperationNode {
+	return &DiskLastDayOperationNode{operationType: operationType, segmented: segmented, parent: parent, path: path}
+}
+
+func (node *DiskLastDayOperationNode) ShouldPauseUpdates() bool { return false }
+
+func (node *DiskLastDayOperationNode) GetChildren() []MetricChild {
+	var children []MetricChild
+
+	// Add "Total" entry first
+	children = append(children, MetricChild{
+		Name:        "Total",
+		Description: fmt.Sprintf("Total statistics for %s operations across all time segments", node.operationType),
+	})
+
+	// Add time segments, most recent first (filter out empty segments)
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		segmentName := segmentTime.UTC().Format("15:04Z")
+
+		// Get operation count for this segment
+		var operations uint64 = 0
+		if i < len(node.segmented.Segments) {
+			operations = node.segmented.Segments[i].Count
+		}
+
+		// Filter out time segments with no operations
+		if operations == 0 {
+			continue
+		}
+
+		// Add average time if available
+		avg := ""
+		if operations > 0 && node.segmented.Segments[i].AccTime > 0 {
+			avgTime := (node.segmented.Segments[i].AccTime / float64(operations)) * 1000
+			avg = fmt.Sprintf(", %.1fms avg", avgTime)
+		}
+
+		// Determine day prefix
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
+
+		children = append(children, MetricChild{
+			Name: segmentName,
+			Description: fmt.Sprintf("%s %s%s -> %s (%d %s ops%s)",
+				node.operationType,
+				day,
+				segmentTime.Local().Format("15:04"),
+				endTime.Local().Format("15:04"),
+				operations,
+				node.operationType,
+				avg),
+		})
+	}
+	return children
+}
+
+func (node *DiskLastDayOperationNode) GetChild(name string) (MetricNode, error) {
+	// Handle "Total" entry
+	if name == "Total" {
+		return &DiskOperationTotalNode{
+			operationType: node.operationType,
+			segmented:     node.segmented,
+			parent:        node,
+			path:          fmt.Sprintf("%s/Total", node.path),
+		}, nil
+	}
+
+	// Handle time segments - find by time format (with UTC indicator)
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		if segmentTime.UTC().Format("15:04Z") == name {
+			return &DiskOperationTimeSegmentNode{
+				operationType: node.operationType,
+				segment:       node.segmented.Segments[i],
+				segmentTime:   segmentTime,
+				interval:      node.segmented.Interval,
+				parent:        node,
+				path:          fmt.Sprintf("%s/%s", node.path, name),
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("time segment not found: %s", name)
+}
+
+func (node *DiskLastDayOperationNode) GetLeafData() map[string]string { return nil }
+func (node *DiskLastDayOperationNode) GetMetricType() MetricType       { return MetricsDisk }
+func (node *DiskLastDayOperationNode) GetMetricFlags() MetricFlags     { return 0 }
+func (node *DiskLastDayOperationNode) GetParent() MetricNode           { return node.parent }
+func (node *DiskLastDayOperationNode) GetPath() string                 { return node.path }
+func (node *DiskLastDayOperationNode) RequiredMetricTypes() MetricType { return MetricsDisk }
+func (node *DiskLastDayOperationNode) ShouldPauseRefresh() bool        { return false }
+
+// DiskOperationTotalNode shows aggregated statistics for an operation across all time segments
+type DiskOperationTotalNode struct {
+	operationType string
+	segmented     SegmentedDiskActions
+	parent        MetricNode
+	path          string
+}
+
+func (node *DiskOperationTotalNode) ShouldPauseUpdates() bool           { return false }
+func (node *DiskOperationTotalNode) GetChildren() []MetricChild         { return []MetricChild{} }
+func (node *DiskOperationTotalNode) GetMetricType() MetricType           { return MetricsDisk }
+func (node *DiskOperationTotalNode) GetMetricFlags() MetricFlags         { return 0 }
+func (node *DiskOperationTotalNode) GetParent() MetricNode               { return node.parent }
+func (node *DiskOperationTotalNode) GetPath() string                     { return node.path }
+func (node *DiskOperationTotalNode) RequiredMetricTypes() MetricType     { return MetricsDisk }
+func (node *DiskOperationTotalNode) ShouldPauseRefresh() bool            { return false }
+func (node *DiskOperationTotalNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("operation total is a leaf node")
+}
+
+func (node *DiskOperationTotalNode) GetLeafData() map[string]string {
+	data := map[string]string{}
+
+	// Calculate totals across all segments using the Total() method
+	total := node.segmented.Total()
+
+	// Time range info - show full day range
+	if len(node.segmented.Segments) > 0 {
+		firstTime := node.segmented.FirstTime
+		lastSegmentTime := node.segmented.FirstTime.Add(time.Duration((len(node.segmented.Segments)-1)*node.segmented.Interval) * time.Second)
+		endTime := lastSegmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		data["Time Range"] = fmt.Sprintf("%s -> %s",
+			firstTime.Local().Format("15:04"),
+			endTime.Local().Format("15:04"))
+	}
+
+	// Operation statistics
+	if total.Count > 0 {
+		avgTime := total.AccTime / float64(total.Count) * 1000 // Convert to milliseconds
+		minTime := total.MinTime * 1000 // Convert to milliseconds
+		maxTime := total.MaxTime * 1000 // Convert to milliseconds
+
+		if total.AccTime > 0 {
+			rps := float64(total.Count) / total.AccTime
+			data["Rate"] = fmt.Sprintf("%.2f ops/sec", rps)
+		}
+
+		data["Operations"] = fmt.Sprintf("%s %s operations", humanize.Comma(int64(total.Count)), node.operationType)
+		data["Average Time"] = fmt.Sprintf("%.2f ms", avgTime)
+		data["Min Time"] = fmt.Sprintf("%.2f ms", minTime)
+		data["Max Time"] = fmt.Sprintf("%.2f ms", maxTime)
+
+		if total.Bytes > 0 {
+			avgSize := float64(total.Bytes) / float64(total.Count)
+			data["Data Transferred"] = fmt.Sprintf("%s total, %s avg/op", humanize.Bytes(total.Bytes), humanize.Bytes(uint64(avgSize)))
+		}
+	} else {
+		data["Operations"] = fmt.Sprintf("No %s operations recorded", node.operationType)
+	}
+
+	// Always show AvailabilityErrs and Timeouts, even if 0
+	data["Availability Errors"] = fmt.Sprintf("%d", total.AvailabilityErrs)
+	data["Timeouts"] = fmt.Sprintf("%d", total.Timeouts)
+
+	return data
+}
+
+// DiskOperationTimeSegmentNode shows statistics for a specific operation type within a specific time segment
+type DiskOperationTimeSegmentNode struct {
+	operationType string
+	segment       DiskAction
+	segmentTime   time.Time
+	interval      int // Segment interval in seconds
+	parent        MetricNode
+	path          string
+}
+
+func (node *DiskOperationTimeSegmentNode) ShouldPauseUpdates() bool           { return false }
+func (node *DiskOperationTimeSegmentNode) GetChildren() []MetricChild         { return []MetricChild{} }
+func (node *DiskOperationTimeSegmentNode) GetMetricType() MetricType           { return MetricsDisk }
+func (node *DiskOperationTimeSegmentNode) GetMetricFlags() MetricFlags         { return 0 }
+func (node *DiskOperationTimeSegmentNode) GetParent() MetricNode               { return node.parent }
+func (node *DiskOperationTimeSegmentNode) GetPath() string                     { return node.path }
+func (node *DiskOperationTimeSegmentNode) RequiredMetricTypes() MetricType     { return MetricsDisk }
+func (node *DiskOperationTimeSegmentNode) ShouldPauseRefresh() bool            { return false }
+func (node *DiskOperationTimeSegmentNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("operation time segment is a leaf node")
+}
+
+func (node *DiskOperationTimeSegmentNode) GetLeafData() map[string]string {
+	data := map[string]string{}
+
+	// Time range info - use proper interval
+	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
+	data["Time Range"] = fmt.Sprintf("%s -> %s",
+		node.segmentTime.Local().Format("15:04"),
+		endTime.Local().Format("15:04"))
+
+	// Operation statistics
+	if node.segment.Count > 0 {
+		avgTime := node.segment.AccTime / float64(node.segment.Count) * 1000 // Convert to milliseconds
+		minTime := node.segment.MinTime * 1000 // Convert to milliseconds
+		maxTime := node.segment.MaxTime * 1000 // Convert to milliseconds
+
+		if node.segment.AccTime > 0 {
+			rps := float64(node.segment.Count) / node.segment.AccTime
+			data["Rate"] = fmt.Sprintf("%.2f ops/sec", rps)
+		}
+
+		data["Operations"] = fmt.Sprintf("%s %s operations", humanize.Comma(int64(node.segment.Count)), node.operationType)
+		data["Average Time"] = fmt.Sprintf("%.2f ms", avgTime)
+		data["Min Time"] = fmt.Sprintf("%.2f ms", minTime)
+		data["Max Time"] = fmt.Sprintf("%.2f ms", maxTime)
+
+		if node.segment.Bytes > 0 {
+			avgSize := float64(node.segment.Bytes) / float64(node.segment.Count)
+			data["Data Transferred"] = fmt.Sprintf("%s total, %s avg/op", humanize.Bytes(node.segment.Bytes), humanize.Bytes(uint64(avgSize)))
+		}
+	} else {
+		data["Operations"] = fmt.Sprintf("No %s operations in this time segment", node.operationType)
+	}
+
+	// Always show AvailabilityErrs and Timeouts, even if 0
+	data["Availability Errors"] = fmt.Sprintf("%d", node.segment.AvailabilityErrs)
+	data["Timeouts"] = fmt.Sprintf("%d", node.segment.Timeouts)
+
+	return data
+}
+
+// DiskIOTimeSegmentNode shows IO statistics for a specific time segment
+type DiskIOTimeSegmentNode struct {
+	segment     DiskIOStats
+	segmentTime time.Time
+	interval    int // Segment interval in seconds
+	parent      MetricNode
+	path        string
+}
+
+func NewDiskIOTimeSegmentNode(segment DiskIOStats, segmentTime time.Time, interval int, parent MetricNode, path string) *DiskIOTimeSegmentNode {
+	return &DiskIOTimeSegmentNode{segment: segment, segmentTime: segmentTime, interval: interval, parent: parent, path: path}
+}
+
+func (node *DiskIOTimeSegmentNode) ShouldPauseUpdates() bool           { return false }
+func (node *DiskIOTimeSegmentNode) GetChildren() []MetricChild         { return []MetricChild{} }
+func (node *DiskIOTimeSegmentNode) GetMetricType() MetricType           { return MetricsDisk }
+func (node *DiskIOTimeSegmentNode) GetMetricFlags() MetricFlags         { return 0 }
+func (node *DiskIOTimeSegmentNode) GetParent() MetricNode               { return node.parent }
+func (node *DiskIOTimeSegmentNode) GetPath() string                     { return node.path }
+func (node *DiskIOTimeSegmentNode) RequiredMetricTypes() MetricType     { return MetricsDisk }
+func (node *DiskIOTimeSegmentNode) ShouldPauseRefresh() bool            { return false }
+func (node *DiskIOTimeSegmentNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("IO time segment is a leaf node")
+}
+
+func (node *DiskIOTimeSegmentNode) GetLeafData() map[string]string {
+	data := map[string]string{}
+
+	// Time range info - use proper interval
+	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
+	data["Time Range"] = fmt.Sprintf("%s -> %s",
+		node.segmentTime.Local().Format("15:04"),
+		endTime.Local().Format("15:04"))
+
+	// IO statistics for this segment using the same format as io_last_minute
+	totalIOs := node.segment.ReadIOs + node.segment.WriteIOs + node.segment.DiscardIOs + node.segment.FlushIOs
+	if totalIOs > 0 {
+		// Use proper segment timeframe
+		timeframeSeconds := float64(node.interval)
+		numDrives := int(node.segment.N) // Number of drives for this segment
+		if numDrives == 0 {
+			numDrives = 1 // Avoid division by zero
+		}
+
+		data["00:Info"] = fmt.Sprintf("Aggregated from %d drives over %.0f seconds",
+			numDrives, timeframeSeconds)
+
+		// Format IO operation stats using the same formatIOStats function
+		formatIOStats(data, "Read", node.segment.ReadIOs, node.segment.ReadMerges, node.segment.ReadSectors,
+			node.segment.ReadTicks, numDrives, timeframeSeconds)
+		formatIOStats(data, "Write", node.segment.WriteIOs, node.segment.WriteMerges, node.segment.WriteSectors,
+			node.segment.WriteTicks, numDrives, timeframeSeconds)
+		formatIOStats(data, "Discard", node.segment.DiscardIOs, node.segment.DiscardMerges, node.segment.DiscardSectors,
+			node.segment.DiscardTicks, numDrives, timeframeSeconds)
+		formatIOStats(data, "Flush", node.segment.FlushIOs, 0, 0,
+			node.segment.FlushTicks, numDrives, timeframeSeconds)
+
+		// Add device utilization metrics
+		if node.segment.TotalTicks > 0 {
+			utilPercent := float64(node.segment.TotalTicks) / (timeframeSeconds * 1000.0) * 100.0
+			avgUtilPerDrive := utilPercent / float64(numDrives)
+			data["Device Utilization"] = fmt.Sprintf("%.1f%% total, %.1f%% avg per drive",
+				utilPercent, avgUtilPerDrive)
+		}
+
+		// Show current IOs if available
+		if node.segment.CurrentIOs > 0 {
+			data["Current IOs"] = fmt.Sprintf("%d operations in progress", node.segment.CurrentIOs)
+		}
+	} else {
+		data["00:Info"] = "No IO activity in this time segment"
+	}
+
+	return data
+}
+
+// DiskIOTotalNode shows aggregated IO statistics across all time segments
+type DiskIOTotalNode struct {
+	dailyStats SegmentedDiskIO
+	parent     MetricNode
+	path       string
+}
+
+func (node *DiskIOTotalNode) ShouldPauseUpdates() bool           { return false }
+func (node *DiskIOTotalNode) GetChildren() []MetricChild         { return []MetricChild{} }
+func (node *DiskIOTotalNode) GetMetricType() MetricType           { return MetricsDisk }
+func (node *DiskIOTotalNode) GetMetricFlags() MetricFlags         { return 0 }
+func (node *DiskIOTotalNode) GetParent() MetricNode               { return node.parent }
+func (node *DiskIOTotalNode) GetPath() string                     { return node.path }
+func (node *DiskIOTotalNode) RequiredMetricTypes() MetricType     { return MetricsDisk }
+func (node *DiskIOTotalNode) ShouldPauseRefresh() bool            { return false }
+func (node *DiskIOTotalNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("IO total is a leaf node")
+}
+
+func (node *DiskIOTotalNode) GetLeafData() map[string]string {
+	data := map[string]string{}
+
+	// Aggregate all segments
+	var totalReadIOs, totalWriteIOs, totalDiscardIOs, totalFlushIOs uint64
+	var totalReadMerges, totalWriteMerges, totalDiscardMerges uint64
+	var totalReadSectors, totalWriteSectors, totalDiscardSectors uint64
+	var totalReadTicks, totalWriteTicks, totalDiscardTicks, totalFlushTicks uint64
+	var totalTotalTicks uint64
+	var segmentCount int
+
+	for _, segment := range node.dailyStats.Segments {
+		totalReadIOs += segment.ReadIOs
+		totalWriteIOs += segment.WriteIOs
+		totalDiscardIOs += segment.DiscardIOs
+		totalFlushIOs += segment.FlushIOs
+
+		totalReadMerges += segment.ReadMerges
+		totalWriteMerges += segment.WriteMerges
+		totalDiscardMerges += segment.DiscardMerges
+
+		totalReadSectors += segment.ReadSectors
+		totalWriteSectors += segment.WriteSectors
+		totalDiscardSectors += segment.DiscardSectors
+
+		totalReadTicks += segment.ReadTicks
+		totalWriteTicks += segment.WriteTicks
+		totalDiscardTicks += segment.DiscardTicks
+		totalFlushTicks += segment.FlushTicks
+
+		totalTotalTicks += segment.TotalTicks
+
+		if segment.ReadIOs+segment.WriteIOs+segment.DiscardIOs+segment.FlushIOs > 0 {
+			segmentCount++
+		}
+	}
+
+	if segmentCount > 0 {
+		// Calculate total timeframe (all segments combined)
+		totalTimeframeSeconds := float64(len(node.dailyStats.Segments) * node.dailyStats.Interval)
+
+		// Estimate average number of drives (use segment count as approximation)
+		avgNumDrives := segmentCount
+
+		data["00:Info"] = fmt.Sprintf("Aggregated across %d time segments over %.0f seconds",
+			segmentCount, totalTimeframeSeconds)
+
+		// Format IO operation stats using the same formatIOStats function
+		formatIOStats(data, "Read", totalReadIOs, totalReadMerges, totalReadSectors,
+			totalReadTicks, avgNumDrives, totalTimeframeSeconds)
+		formatIOStats(data, "Write", totalWriteIOs, totalWriteMerges, totalWriteSectors,
+			totalWriteTicks, avgNumDrives, totalTimeframeSeconds)
+		formatIOStats(data, "Discard", totalDiscardIOs, totalDiscardMerges, totalDiscardSectors,
+			totalDiscardTicks, avgNumDrives, totalTimeframeSeconds)
+		formatIOStats(data, "Flush", totalFlushIOs, 0, 0,
+			totalFlushTicks, avgNumDrives, totalTimeframeSeconds)
+
+		// Add device utilization metrics
+		if totalTotalTicks > 0 {
+			utilPercent := float64(totalTotalTicks) / (totalTimeframeSeconds * 1000.0) * 100.0
+			avgUtilPerDrive := utilPercent / float64(avgNumDrives)
+			data["Device Utilization"] = fmt.Sprintf("%.1f%% total, %.1f%% avg per drive",
+				utilPercent, avgUtilPerDrive)
+		}
+	} else {
+		data["00:Info"] = "No IO activity recorded"
+	}
+
+	return data
 }
 
 // DiskCacheNode handles navigation for cache statistics
