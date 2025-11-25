@@ -97,7 +97,7 @@ func (r *Renderer) RenderHeader(nav *NavigationState) string {
 	// Get timing info with fixed width
 	var timeDisplay string
 	if nav.IsRefreshing() {
-		timeDisplay = ""
+		timeDisplay = selectedStyle.Render("LOADING")
 	} else {
 		lastRefresh := nav.GetLastRefresh()
 		if !lastRefresh.IsZero() {

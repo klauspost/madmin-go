@@ -11,17 +11,17 @@ import (
 
 // NavigationState manages the current state of navigation through metrics
 type NavigationState struct {
-	adminClient      *madmin.AdminClient
-	config           Config
-	navigator        madmin.MetricNavigator
-	currentNode      madmin.MetricNode
-	currentPath      string
-	pathHistory      []string // Navigation history for back functionality
-	selectedIndex    int      // Currently selected child index
+	adminClient       *madmin.AdminClient
+	config            Config
+	navigator         madmin.MetricNavigator
+	currentNode       madmin.MetricNode
+	currentPath       string
+	pathHistory       []string // Navigation history for back functionality
+	selectedIndex     int      // Currently selected child index
 	lastSelectedChild string   // Name of child we navigated into (for smart back navigation)
-	lastRefresh      time.Time
-	refreshing       bool
-	errorMessage     string
+	lastRefresh       time.Time
+	refreshing        bool
+	errorMessage      string
 }
 
 // NewNavigationState creates a new navigation state
@@ -190,6 +190,7 @@ func (ns *NavigationState) NavigateInto() error {
 
 	// Trigger refresh if needed for new flags
 	if needsRefresh && !ns.refreshing {
+		ns.refreshing = true
 		go func() {
 			ns.Refresh()
 		}()
@@ -271,7 +272,6 @@ func (ns *NavigationState) NavigateToPath(path string) error {
 
 // Refresh reloads the metrics and updates the navigator
 func (ns *NavigationState) Refresh() error {
-	ns.refreshing = true
 	ns.errorMessage = ""
 
 	// Can't refresh if no admin client (import mode)
@@ -285,6 +285,7 @@ func (ns *NavigationState) Refresh() error {
 	defer cancel()
 
 	opts := getMetricOptions(ns.config)
+	opts.N = 1
 
 	// Add current node's required metric flags
 	if ns.currentNode != nil {

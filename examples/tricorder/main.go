@@ -46,8 +46,6 @@ func parseFlags() Config {
 	flag.BoolVar(&cfg.UseSSL, "tls", false, "Use SSL/TLS connection")
 	flag.StringVar(&cfg.InputFile, "in", "", "Import compressed metrics from file instead of connecting to server")
 
-	var types string
-	flag.StringVar(&types, "types", "", "Comma-separated metric types (scanner,cpu,mem,disk,os,net,rpc,api,runtime,process)")
 	var refresh string
 	flag.StringVar(&refresh, "refresh", "3s", "Refresh interval (e.g., 1s, 30s, 1m)")
 
@@ -72,13 +70,6 @@ func parseFlags() Config {
 	}
 
 	flag.Parse()
-
-	if types != "" {
-		cfg.MetricTypes = strings.Split(types, ",")
-		for i, t := range cfg.MetricTypes {
-			cfg.MetricTypes[i] = strings.TrimSpace(t)
-		}
-	}
 
 	var err error
 	cfg.RefreshPeriod, err = time.ParseDuration(refresh)

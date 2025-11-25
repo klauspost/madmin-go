@@ -13,22 +13,22 @@ import (
 
 // TricorderModel represents the main TUI model
 type TricorderModel struct {
-	nav            *NavigationState
-	renderer       *Renderer
-	config         Config
-	width          int
-	height         int
-	quitting       bool
-	lastPath       string    // Track the current path to detect navigation changes
-	scrollOffset   int       // Current scroll position in content
-	menuScrollTop  int       // Top index of visible menu items
-	lastScroll     int       // Track scroll changes
-	lastSelection  int       // Track selection changes
-	lastEscTime    time.Time // Track last Esc press for double-Esc exit
-	inputMode      bool      // True when in input dialog mode
-	inputPrompt    string    // Prompt text for input dialog
-	inputValue     string    // Current input value
-	inputCallback  func(string) tea.Cmd // Callback when input is submitted
+	nav           *NavigationState
+	renderer      *Renderer
+	config        Config
+	width         int
+	height        int
+	quitting      bool
+	lastPath      string               // Track the current path to detect navigation changes
+	scrollOffset  int                  // Current scroll position in content
+	menuScrollTop int                  // Top index of visible menu items
+	lastScroll    int                  // Track scroll changes
+	lastSelection int                  // Track selection changes
+	lastEscTime   time.Time            // Track last Esc press for double-Esc exit
+	inputMode     bool                 // True when in input dialog mode
+	inputPrompt   string               // Prompt text for input dialog
+	inputValue    string               // Current input value
+	inputCallback func(string) tea.Cmd // Callback when input is submitted
 }
 
 // refreshMsg is sent when auto-refresh timer fires
