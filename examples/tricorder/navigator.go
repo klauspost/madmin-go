@@ -192,9 +192,11 @@ func (ns *NavigationState) NavigateInto() error {
 	ns.errorMessage = ""
 
 	// Trigger refresh if needed for new flags
-	// Don't do concurrent refresh during navigation as it causes race conditions
-	// The regular auto-refresh will pick up the new flags on the next cycle
-	_ = needsRefresh // Acknowledge but don't act on it here
+	if needsRefresh && !ns.refreshing {
+		// Do immediate synchronous refresh to get the new metrics
+		// This avoids race conditions while still getting fresh data
+		ns.Refresh()
+	}
 
 	return nil
 }
