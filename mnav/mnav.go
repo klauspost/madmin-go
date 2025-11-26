@@ -2,6 +2,7 @@ package mnav
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,8 +32,17 @@ type MetricNode interface {
 
 // MetricChild represents a navigable child
 type MetricChild struct {
-	Name        string
+	Name        string // Navigation key (path-safe, may be URL-encoded)
+	DisplayName string // Human-readable name for display (optional, defaults to Name)
 	Description string
+}
+
+// GetDisplayName returns the display name, falling back to Name if DisplayName is empty
+func (c MetricChild) GetDisplayName() string {
+	if c.DisplayName != "" {
+		return c.DisplayName
+	}
+	return c.Name
 }
 
 // RealtimeMetricsNavigator implements MetricNavigator for RealtimeMetrics
@@ -213,7 +223,9 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 			path:        "by_disk",
 			nodeFactory: func(key string, value interface{}) MetricNode {
 				if diskMetric, ok := value.(madmin.DiskMetric); ok {
-					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", key))
+					// URL-encode the disk name to handle slashes and special characters
+					encodedKey := url.PathEscape(key)
+					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", encodedKey))
 				}
 				return nil
 			},
@@ -348,7 +360,18 @@ func (node *MapNode) GetChildren() []MetricChild {
 		sort.Strings(keys)
 		// Create children in sorted order
 		for _, k := range keys {
-			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Metrics for %s", k)})
+			childName := k
+			displayName := k
+			// For by_disk nodes, URL-encode the name to handle slashes and special characters
+			if strings.Contains(node.path, "by_disk") {
+				childName = url.PathEscape(k)
+				// Keep original name for display
+			}
+			children = append(children, MetricChild{
+				Name:        childName,
+				DisplayName: displayName,
+				Description: fmt.Sprintf("Metrics for %s", k),
+			})
 		}
 		return children
 	case map[string]madmin.DiskMetric:
@@ -361,7 +384,18 @@ func (node *MapNode) GetChildren() []MetricChild {
 		sort.Strings(keys)
 		// Create children in sorted order
 		for _, k := range keys {
-			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Disk metrics for %s", k)})
+			childName := k
+			displayName := k
+			// For by_disk nodes, URL-encode the name to handle slashes and special characters
+			if strings.Contains(node.path, "by_disk") {
+				childName = url.PathEscape(k)
+				// Keep original name for display
+			}
+			children = append(children, MetricChild{
+				Name:        childName,
+				DisplayName: displayName,
+				Description: fmt.Sprintf("Disk metrics for %s", k),
+			})
 		}
 		return children
 	case map[int]map[int]madmin.DiskMetric:
@@ -427,12 +461,28 @@ func (node *MapNode) GetParent() MetricNode {
 func (node *MapNode) GetChild(name string) (MetricNode, error) {
 	switch data := node.data.(type) {
 	case map[string]madmin.Metrics:
-		if value, exists := data[name]; exists {
-			return node.nodeFactory(name, value), nil
+		// For by_disk nodes, URL-decode the name to get the original disk name
+		decodedName := name
+		if strings.Contains(node.path, "by_disk") {
+			if decoded, err := url.PathUnescape(name); err == nil {
+				decodedName = decoded
+			}
+		}
+
+		if value, exists := data[decodedName]; exists {
+			return node.nodeFactory(decodedName, value), nil
 		}
 	case map[string]madmin.DiskMetric:
-		if value, exists := data[name]; exists {
-			return node.nodeFactory(name, value), nil
+		// For by_disk nodes, URL-decode the name to get the original disk name
+		decodedName := name
+		if strings.Contains(node.path, "by_disk") {
+			if decoded, err := url.PathUnescape(name); err == nil {
+				decodedName = decoded
+			}
+		}
+
+		if value, exists := data[decodedName]; exists {
+			return node.nodeFactory(decodedName, value), nil
 		}
 	case map[int]map[int]madmin.DiskMetric:
 		// This is handled by DiskSetMapNode

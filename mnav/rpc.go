@@ -262,17 +262,6 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	// Get any segmented data to determine time segments
-	var firstSegmented *madmin.SegmentedRPCMetrics
-	for _, segmented := range node.rpc.LastDay {
-		firstSegmented = &segmented
-		break
-	}
-
-	if firstSegmented == nil || len(firstSegmented.Segments) == 0 {
-		return []MetricChild{}
-	}
-
 	var children []MetricChild
 
 	// Add "Total" entry first
@@ -281,30 +270,24 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 		Description: "Last day total statistics across all time segments",
 	})
 
+	// Calculate union of all time segments across all handlers
+	timeSegments := node.calculateAllTimeSegments()
+
 	// Add time segments, most recent first (filter out empty segments)
-	for i := len(firstSegmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := firstSegmented.FirstTime.Add(time.Duration(i*firstSegmented.Interval) * time.Second)
-		endTime := segmentTime.Add(time.Duration(firstSegmented.Interval) * time.Second)
+	for i := len(timeSegments) - 1; i >= 0; i-- {
+		segment := timeSegments[i]
+		segmentTime := segment.Time
+		endTime := segmentTime.Add(time.Duration(segment.Interval) * time.Second)
 		segmentName := segmentTime.UTC().Format("15:04Z")
 
-		// Calculate total requests for this time segment across all handlers
-		totalRequests := int64(0)
-		totalTime := float64(0)
-		for _, segmented := range node.rpc.LastDay {
-			if i < len(segmented.Segments) {
-				totalRequests += segmented.Segments[i].Requests
-				totalTime += segmented.Segments[i].RequestTimeSecs
-			}
-		}
-
 		// Filter out time segments with no requests
-		if totalRequests == 0 {
+		if segment.TotalRequests == 0 {
 			continue
 		}
 
 		avg := ""
-		if totalRequests > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalRequests))*1000)
+		if segment.TotalRequests > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (segment.TotalTime/float64(segment.TotalRequests))*1000)
 		}
 		day := "Today "
 		if segmentTime.Local().Day() != time.Now().Day() {
@@ -317,11 +300,61 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 				day,
 				segmentTime.Local().Format("15:04"),
 				endTime.Local().Format("15:04"),
-				totalRequests, avg),
+				segment.TotalRequests, avg),
 		})
 	}
 
 	return children
+}
+
+// timeSegmentInfo represents aggregated information for a specific time segment
+type timeSegmentInfo struct {
+	Time          time.Time
+	Interval      int
+	TotalRequests int64
+	TotalTime     float64
+}
+
+// calculateAllTimeSegments calculates the union of all time segments across all handlers
+func (node *RPCLastDayAllNode) calculateAllTimeSegments() []timeSegmentInfo {
+	segmentMap := make(map[int64]timeSegmentInfo)
+
+	// Collect all unique time segments from all handlers
+	for _, segmented := range node.rpc.LastDay {
+		for i, segment := range segmented.Segments {
+			segmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
+			// Use Unix timestamp as key to avoid precision loss
+			segmentKey := segmentTime.Unix()
+
+			if existing, exists := segmentMap[segmentKey]; exists {
+				// Aggregate with existing segment
+				existing.TotalRequests += segment.Requests
+				existing.TotalTime += segment.RequestTimeSecs
+				segmentMap[segmentKey] = existing
+			} else {
+				// Create new segment
+				segmentMap[segmentKey] = timeSegmentInfo{
+					Time:          segmentTime,
+					Interval:      segmented.Interval,
+					TotalRequests: segment.Requests,
+					TotalTime:     segment.RequestTimeSecs,
+				}
+			}
+		}
+	}
+
+	// Convert map to slice and sort by time
+	var segments []timeSegmentInfo
+	for _, segment := range segmentMap {
+		segments = append(segments, segment)
+	}
+
+	// Sort by time ascending
+	sort.Slice(segments, func(i, j int) bool {
+		return segments[i].Time.Before(segments[j].Time)
+	})
+
+	return segments
 }
 
 func (node *RPCLastDayAllNode) GetLeafData() map[string]string {
@@ -355,26 +388,24 @@ func (node *RPCLastDayAllNode) GetChild(name string) (MetricNode, error) {
 		}, nil
 	}
 
-	// Get segment information from first handler
-	var firstSegmented *madmin.SegmentedRPCMetrics
-	for _, segmented := range node.rpc.LastDay {
-		firstSegmented = &segmented
-		break
-	}
-
-	if firstSegmented == nil {
-		return nil, fmt.Errorf("no segmented data available")
-	}
+	// Calculate all time segments to find the requested one
+	timeSegments := node.calculateAllTimeSegments()
 
 	// Handle time segments
-	for i := len(firstSegmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := firstSegmented.FirstTime.Add(time.Duration(i*firstSegmented.Interval) * time.Second)
+	for _, segment := range timeSegments {
+		segmentTime := segment.Time
 		if segmentTime.UTC().Format("15:04Z") == name {
-			// Aggregate this time segment across all handlers
+			// Create aggregated stats for this time segment
 			var aggregatedStats madmin.RPCStats
+
+			// Aggregate data from all handlers for this specific time
 			for _, segmented := range node.rpc.LastDay {
-				if i < len(segmented.Segments) {
-					aggregatedStats.Merge(segmented.Segments[i])
+				for i, handlerSegment := range segmented.Segments {
+					handlerSegmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
+					if handlerSegmentTime.Equal(segmentTime) {
+						aggregatedStats.Merge(handlerSegment)
+						break
+					}
 				}
 			}
 

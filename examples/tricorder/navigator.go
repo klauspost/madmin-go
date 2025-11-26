@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -187,15 +188,13 @@ func (ns *NavigationState) NavigateInto() error {
 	} else {
 		ns.selectedIndex = 0
 	}
+
 	ns.errorMessage = ""
 
 	// Trigger refresh if needed for new flags
-	if needsRefresh && !ns.refreshing {
-		ns.refreshing = true
-		go func() {
-			ns.Refresh()
-		}()
-	}
+	// Don't do concurrent refresh during navigation as it causes race conditions
+	// The regular auto-refresh will pick up the new flags on the next cycle
+	_ = needsRefresh // Acknowledge but don't act on it here
 
 	return nil
 }
@@ -302,34 +301,24 @@ func (ns *NavigationState) Refresh() error {
 	var metrics madmin.RealtimeMetrics
 	var gotMetrics bool
 
-	// Use a channel to get the first metrics sample and then cancel
-	done := make(chan error, 1)
-
-	go func() {
-		err := ns.adminClient.Metrics(ctx, opts, func(m madmin.RealtimeMetrics) {
-			if !gotMetrics {
-				metrics = m
-				gotMetrics = true
-				cancel() // Cancel after getting first sample
-			}
-		})
-		done <- err
-	}()
-
-	// Wait for either metrics or timeout
-	select {
-	case err := <-done:
-		if err != nil && !gotMetrics {
-			ns.refreshing = false
-			ns.errorMessage = fmt.Sprintf("Refresh error: %v", err)
-			return err
-		}
-	case <-ctx.Done():
+	// Collect exactly one sample without premature cancellation
+	collectErr := ns.adminClient.Metrics(ctx, opts, func(m madmin.RealtimeMetrics) {
 		if !gotMetrics {
-			ns.refreshing = false
-			ns.errorMessage = "Refresh timeout: no metrics received"
-			return fmt.Errorf("timeout waiting for metrics")
+			metrics = m
+			gotMetrics = true
 		}
+	})
+
+	if collectErr != nil && !gotMetrics {
+		ns.refreshing = false
+		ns.errorMessage = fmt.Sprintf("Refresh error: %v", collectErr)
+		return collectErr
+	}
+
+	if !gotMetrics {
+		ns.refreshing = false
+		ns.errorMessage = "Refresh failed: no metrics received"
+		return fmt.Errorf("no metrics received")
 	}
 
 	// Create new navigator
@@ -448,7 +437,14 @@ func (ns *NavigationState) GetBreadcrumbs() []string {
 
 	for _, part := range parts {
 		if part != "" {
-			breadcrumbs = append(breadcrumbs, part)
+			displayPart := part
+			// Try to URL-decode any encoded path segments
+			if strings.Contains(part, "%") {
+				if decoded, err := url.PathUnescape(part); err == nil {
+					displayPart = decoded
+				}
+			}
+			breadcrumbs = append(breadcrumbs, displayPart)
 		}
 	}
 

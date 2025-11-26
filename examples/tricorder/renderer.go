@@ -287,15 +287,19 @@ func (r *Renderer) renderChildrenWithScroll(nav *NavigationState, menuScrollTop,
 	for i, child := range children {
 		var line string
 		displayIndex := currentIndex + i
+
+		// Use the proper display name
+		displayName := child.GetDisplayName()
+
 		if displayIndex == selectedIndex {
 			// Highlighted selection
-			line = selectedStyle.Render(fmt.Sprintf("► %s", child.Name))
+			line = selectedStyle.Render(fmt.Sprintf("► %s", displayName))
 			if child.Description != "" {
 				line += "  " + descriptionStyle.Render(fmt.Sprintf("- %s", child.Description))
 			}
 		} else {
 			// Normal item
-			line = itemStyle.Render(fmt.Sprintf("  %s", child.Name))
+			line = itemStyle.Render(fmt.Sprintf("  %s", displayName))
 			if child.Description != "" {
 				line += " " + descriptionStyle.Render(fmt.Sprintf("- %s", child.Description))
 			}
