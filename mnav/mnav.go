@@ -179,7 +179,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.Aggregated.OS, node, "os"), nil
 	case "batch_jobs":
-		return &BatchJobMetricsNode{batch: node.metrics.Aggregated.BatchJobs, parent: node, path: "batch_jobs"}, nil
+		return NewBatchJobMetricsNode(node.metrics.Aggregated.BatchJobs, node, "batch_jobs"), nil
 	case "site_resync":
 		return NewSiteResyncMetricsNode(node.metrics.Aggregated.SiteResync, node, "site_resync"), nil
 	case "net":
@@ -309,7 +309,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.OS, node, fmt.Sprintf("%s/os", node.path)), nil
 	case "batch_jobs":
-		return &BatchJobMetricsNode{batch: node.metrics.BatchJobs, parent: node, path: fmt.Sprintf("%s/batch_jobs", node.path)}, nil
+		return NewBatchJobMetricsNode(node.metrics.BatchJobs, node, fmt.Sprintf("%s/batch_jobs", node.path)), nil
 	case "site_resync":
 		return NewSiteResyncMetricsNode(node.metrics.SiteResync, node, fmt.Sprintf("%s/site_resync", node.path)), nil
 	case "net":
@@ -905,35 +905,4 @@ func (node *OSMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("os metric sub-navigation not yet implemented for: %s", name)
 }
 
-type BatchJobMetricsNode struct {
-	batch  *madmin.BatchJobMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *BatchJobMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *BatchJobMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "jobs", Description: "Individual batch jobs by ID"},
-	}
-}
-func (node *BatchJobMetricsNode) GetLeafData() map[string]string     { return nil }
-func (node *BatchJobMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsBatchJobs }
-func (node *BatchJobMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *BatchJobMetricsNode) GetParent() MetricNode              { return node.parent }
-func (node *BatchJobMetricsNode) GetPath() string                    { return node.path }
-func (node *BatchJobMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsBatchJobs
-}
-
-func (node *BatchJobMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *BatchJobMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("batch job metric sub-navigation not yet implemented for: %s", name)
-}
 
