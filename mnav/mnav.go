@@ -181,7 +181,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "batch_jobs":
 		return &BatchJobMetricsNode{batch: node.metrics.Aggregated.BatchJobs, parent: node, path: "batch_jobs"}, nil
 	case "site_resync":
-		return &SiteResyncMetricsNode{resync: node.metrics.Aggregated.SiteResync, parent: node, path: "site_resync"}, nil
+		return NewSiteResyncMetricsNode(node.metrics.Aggregated.SiteResync, node, "site_resync"), nil
 	case "net":
 		return NewNetMetricsNavigator(node.metrics.Aggregated.Net, node, "net"), nil
 	case "mem":
@@ -311,7 +311,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "batch_jobs":
 		return &BatchJobMetricsNode{batch: node.metrics.BatchJobs, parent: node, path: fmt.Sprintf("%s/batch_jobs", node.path)}, nil
 	case "site_resync":
-		return &SiteResyncMetricsNode{resync: node.metrics.SiteResync, parent: node, path: fmt.Sprintf("%s/site_resync", node.path)}, nil
+		return NewSiteResyncMetricsNode(node.metrics.SiteResync, node, fmt.Sprintf("%s/site_resync", node.path)), nil
 	case "net":
 		return NewNetMetricsNavigator(node.metrics.Net, node, fmt.Sprintf("%s/net", node.GetPath())), nil
 	case "mem":
@@ -937,36 +937,3 @@ func (node *BatchJobMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("batch job metric sub-navigation not yet implemented for: %s", name)
 }
 
-type SiteResyncMetricsNode struct {
-	resync *madmin.SiteResyncMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *SiteResyncMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *SiteResyncMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "status", Description: "Resync operation status"},
-		{Name: "progress", Description: "Replication progress metrics"},
-		{Name: "failed_buckets", Description: "Buckets that failed to sync"},
-	}
-}
-func (node *SiteResyncMetricsNode) GetLeafData() map[string]string     { return nil }
-func (node *SiteResyncMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsSiteResync }
-func (node *SiteResyncMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *SiteResyncMetricsNode) GetParent() MetricNode              { return node.parent }
-func (node *SiteResyncMetricsNode) GetPath() string                    { return node.path }
-func (node *SiteResyncMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsSiteResync
-}
-
-func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *SiteResyncMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("site resync metric sub-navigation not yet implemented for: %s", name)
-}
