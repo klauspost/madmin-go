@@ -1,21 +1,23 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/minio/madmin-go/v4"
 )
 
 // ScannerMetricsNode handles navigation for ScannerMetrics
 type ScannerMetricsNode struct {
-	scanner *ScannerMetrics
+	scanner *madmin.ScannerMetrics
 	parent  MetricNode
 	path    string
 }
 
 // NewScannerMetricsNode creates a new ScannerMetricsNode
-func NewScannerMetricsNode(scanner *ScannerMetrics, parent MetricNode, path string) *ScannerMetricsNode {
+func NewScannerMetricsNode(scanner *madmin.ScannerMetrics, parent MetricNode, path string) *ScannerMetricsNode {
 	return &ScannerMetricsNode{
 		scanner: scanner,
 		parent:  parent,
@@ -63,11 +65,11 @@ func (node *ScannerMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerMetricsNode) GetMetricType() MetricType {
-	return MetricsScanner
+func (node *ScannerMetricsNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricsScanner
 }
 
-func (node *ScannerMetricsNode) GetMetricFlags() MetricFlags {
+func (node *ScannerMetricsNode) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -79,8 +81,8 @@ func (node *ScannerMetricsNode) GetPath() string {
 	return node.path
 }
 
-func (node *ScannerMetricsNode) RequiredMetricTypes() MetricType {
-	return MetricsScanner
+func (node *ScannerMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
 }
 
 func (node *ScannerMetricsNode) ShouldPauseRefresh() bool {
@@ -109,12 +111,12 @@ func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 // Helper nodes for scanner sub-components
 
 type ScannerBucketsNode struct {
-	buckets map[string][]BucketScanInfo
+	buckets map[string][]madmin.BucketScanInfo
 	parent  MetricNode
 	path    string
 }
 
-func NewScannerBucketsNode(buckets map[string][]BucketScanInfo, parent MetricNode, path string) *ScannerBucketsNode {
+func NewScannerBucketsNode(buckets map[string][]madmin.BucketScanInfo, parent MetricNode, path string) *ScannerBucketsNode {
 	return &ScannerBucketsNode{buckets: buckets, parent: parent, path: path}
 }
 
@@ -138,11 +140,11 @@ func (node *ScannerBucketsNode) GetLeafData() map[string]string {
 	}
 }
 
-func (node *ScannerBucketsNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerBucketsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerBucketsNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerBucketsNode) GetPath() string                 { return node.path }
-func (node *ScannerBucketsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerBucketsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
+func (node *ScannerBucketsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *ScannerBucketsNode) GetParent() MetricNode                  { return node.parent }
+func (node *ScannerBucketsNode) GetPath() string                        { return node.path }
+func (node *ScannerBucketsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
 
 func (node *ScannerBucketsNode) ShouldPauseRefresh() bool {
 	return false
@@ -155,12 +157,12 @@ func (node *ScannerBucketsNode) GetChild(name string) (MetricNode, error) {
 }
 
 type ScannerBucketStatsNode struct {
-	stats  []BucketScanInfo
+	stats  []madmin.BucketScanInfo
 	parent MetricNode
 	path   string
 }
 
-func NewScannerBucketStatsNode(stats []BucketScanInfo, parent MetricNode, path string) *ScannerBucketStatsNode {
+func NewScannerBucketStatsNode(stats []madmin.BucketScanInfo, parent MetricNode, path string) *ScannerBucketStatsNode {
 	return &ScannerBucketStatsNode{stats: stats, parent: parent, path: path}
 }
 
@@ -170,11 +172,13 @@ func (node *ScannerBucketStatsNode) GetLeafData() map[string]string {
 		"scan_sets": strconv.Itoa(len(node.stats)),
 	}
 }
-func (node *ScannerBucketStatsNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerBucketStatsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerBucketStatsNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerBucketStatsNode) GetPath() string                 { return node.path }
-func (node *ScannerBucketStatsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerBucketStatsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerBucketStatsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerBucketStatsNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerBucketStatsNode) GetPath() string                    { return node.path }
+func (node *ScannerBucketStatsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerBucketStatsNode) ShouldPauseRefresh() bool {
 	return false
@@ -220,11 +224,13 @@ func (node *ScannerLifetimeOpsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerLifetimeOpsNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerLifetimeOpsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerLifetimeOpsNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerLifetimeOpsNode) GetPath() string                 { return node.path }
-func (node *ScannerLifetimeOpsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerLifetimeOpsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLifetimeOpsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerLifetimeOpsNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLifetimeOpsNode) GetPath() string                    { return node.path }
+func (node *ScannerLifetimeOpsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
@@ -273,11 +279,13 @@ func (node *ScannerLifetimeILMNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerLifetimeILMNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerLifetimeILMNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerLifetimeILMNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerLifetimeILMNode) GetPath() string                 { return node.path }
-func (node *ScannerLifetimeILMNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerLifetimeILMNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLifetimeILMNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerLifetimeILMNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLifetimeILMNode) GetPath() string                    { return node.path }
+func (node *ScannerLifetimeILMNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerLifetimeILMNode) ShouldPauseRefresh() bool {
 	return false
@@ -291,16 +299,16 @@ func (node *ScannerLifetimeILMNode) GetChild(name string) (MetricNode, error) {
 
 type ScannerLastMinuteNode struct {
 	lastMinute *struct {
-		Actions map[string]TimedAction `json:"actions,omitempty"`
-		ILM     map[string]TimedAction `json:"ilm,omitempty"`
+		Actions map[string]madmin.TimedAction `json:"actions,omitempty"`
+		ILM     map[string]madmin.TimedAction `json:"ilm,omitempty"`
 	}
 	parent MetricNode
 	path   string
 }
 
 func NewScannerLastMinuteNode(lastMinute *struct {
-	Actions map[string]TimedAction `json:"actions,omitempty"`
-	ILM     map[string]TimedAction `json:"ilm,omitempty"`
+	Actions map[string]madmin.TimedAction `json:"actions,omitempty"`
+	ILM     map[string]madmin.TimedAction `json:"ilm,omitempty"`
 }, parent MetricNode, path string) *ScannerLastMinuteNode {
 	return &ScannerLastMinuteNode{lastMinute: lastMinute, parent: parent, path: path}
 }
@@ -329,11 +337,13 @@ func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
 	}
 }
 
-func (node *ScannerLastMinuteNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerLastMinuteNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerLastMinuteNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerLastMinuteNode) GetPath() string                 { return node.path }
-func (node *ScannerLastMinuteNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerLastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerLastMinuteNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLastMinuteNode) GetPath() string                    { return node.path }
+func (node *ScannerLastMinuteNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerLastMinuteNode) ShouldPauseRefresh() bool {
 	return false
@@ -350,12 +360,12 @@ func (node *ScannerLastMinuteNode) GetChild(name string) (MetricNode, error) {
 }
 
 type ScannerTimedActionsNode struct {
-	actions map[string]TimedAction
+	actions map[string]madmin.TimedAction
 	parent  MetricNode
 	path    string
 }
 
-func NewScannerTimedActionsNode(actions map[string]TimedAction, parent MetricNode, path string) *ScannerTimedActionsNode {
+func NewScannerTimedActionsNode(actions map[string]madmin.TimedAction, parent MetricNode, path string) *ScannerTimedActionsNode {
 	return &ScannerTimedActionsNode{actions: actions, parent: parent, path: path}
 }
 
@@ -389,11 +399,13 @@ func (node *ScannerTimedActionsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerTimedActionsNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerTimedActionsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerTimedActionsNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerTimedActionsNode) GetPath() string                 { return node.path }
-func (node *ScannerTimedActionsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerTimedActionsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerTimedActionsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerTimedActionsNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerTimedActionsNode) GetPath() string                    { return node.path }
+func (node *ScannerTimedActionsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerTimedActionsNode) ShouldPauseRefresh() bool {
 	return false
@@ -407,12 +419,12 @@ func (node *ScannerTimedActionsNode) GetChild(name string) (MetricNode, error) {
 
 type ScannerTimedActionNode struct {
 	actionType string
-	action     *TimedAction
+	action     *madmin.TimedAction
 	parent     MetricNode
 	path       string
 }
 
-func NewScannerTimedActionNode(actionType string, action *TimedAction, parent MetricNode, path string) *ScannerTimedActionNode {
+func NewScannerTimedActionNode(actionType string, action *madmin.TimedAction, parent MetricNode, path string) *ScannerTimedActionNode {
 	return &ScannerTimedActionNode{actionType: actionType, action: action, parent: parent, path: path}
 }
 
@@ -427,11 +439,13 @@ func (node *ScannerTimedActionNode) GetLeafData() map[string]string {
 		"bytes":       strconv.FormatUint(node.action.Bytes, 10),
 	}
 }
-func (node *ScannerTimedActionNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerTimedActionNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerTimedActionNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerTimedActionNode) GetPath() string                 { return node.path }
-func (node *ScannerTimedActionNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerTimedActionNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerTimedActionNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerTimedActionNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerTimedActionNode) GetPath() string                    { return node.path }
+func (node *ScannerTimedActionNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsScanner
+}
 
 func (node *ScannerTimedActionNode) ShouldPauseRefresh() bool {
 	return false
@@ -462,11 +476,11 @@ func (node *ScannerPathsNode) GetLeafData() map[string]string {
 	}
 	return data
 }
-func (node *ScannerPathsNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerPathsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerPathsNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerPathsNode) GetPath() string                 { return node.path }
-func (node *ScannerPathsNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerPathsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
+func (node *ScannerPathsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *ScannerPathsNode) GetParent() MetricNode                  { return node.parent }
+func (node *ScannerPathsNode) GetPath() string                        { return node.path }
+func (node *ScannerPathsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
 
 func (node *ScannerPathsNode) ShouldPauseRefresh() bool {
 	return false
@@ -493,11 +507,11 @@ func (node *ScannerOpCountNode) GetLeafData() map[string]string {
 		"count":          strconv.FormatUint(node.count, 10),
 	}
 }
-func (node *ScannerOpCountNode) GetMetricType() MetricType       { return MetricsScanner }
-func (node *ScannerOpCountNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ScannerOpCountNode) GetParent() MetricNode           { return node.parent }
-func (node *ScannerOpCountNode) GetPath() string                 { return node.path }
-func (node *ScannerOpCountNode) RequiredMetricTypes() MetricType { return MetricsScanner }
+func (node *ScannerOpCountNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
+func (node *ScannerOpCountNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *ScannerOpCountNode) GetParent() MetricNode                  { return node.parent }
+func (node *ScannerOpCountNode) GetPath() string                        { return node.path }
+func (node *ScannerOpCountNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
 
 func (node *ScannerOpCountNode) ShouldPauseRefresh() bool {
 	return false

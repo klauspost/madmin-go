@@ -1,264 +1,18 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 // === ENHANCED API METRICS FORMATTING ===
 
-// String returns a human-readable representation of APIStats
-func (a APIStats) String() string {
-	if a.Requests == 0 {
-		return "No API requests recorded"
-	}
-
-	var parts []string
-
-	// Request summary
-	parts = append(parts, fmt.Sprintf("Requests: %s", humanize.Comma(a.Requests)))
-
-	// Timing information
-	if a.Requests > 0 {
-		avgLatency := (a.RequestTimeSecs / float64(a.Requests)) * 1000
-		parts = append(parts, fmt.Sprintf("Avg Latency: %.2fms", avgLatency))
-
-		if a.RequestTimeSecsMin > 0 && a.RequestTimeSecsMax > 0 {
-			parts = append(parts, fmt.Sprintf("Latency Range: %.1f-%.1fms",
-				a.RequestTimeSecsMin*1000, a.RequestTimeSecsMax*1000))
-		}
-	}
-
-	// Throughput
-	totalBytes := a.IncomingBytes + a.OutgoingBytes
-	if totalBytes > 0 {
-		parts = append(parts, fmt.Sprintf("Throughput: %s", humanize.Bytes(uint64(totalBytes))))
-		if a.Requests > 0 {
-			avgBytesPerReq := totalBytes / a.Requests
-			parts = append(parts, fmt.Sprintf("Avg/Request: %s", humanize.Bytes(uint64(avgBytesPerReq))))
-		}
-	}
-
-	// Error rates
-	totalErrors := a.Errors4xx + a.Errors5xx
-	if totalErrors > 0 {
-		errorRate := float64(totalErrors) / float64(a.Requests) * 100
-		parts = append(parts, fmt.Sprintf("Error Rate: %.2f%% (%d)", errorRate, totalErrors))
-	}
-
-	// Rejections
-	totalRejected := a.Rejected.Auth + a.Rejected.Header + a.Rejected.Invalid +
-		a.Rejected.NotImplemented + a.Rejected.RequestsTime
-	if totalRejected > 0 {
-		rejectionRate := float64(totalRejected) / float64(a.Requests) * 100
-		parts = append(parts, fmt.Sprintf("Rejection Rate: %.2f%% (%d)", rejectionRate, totalRejected))
-	}
-
-	if a.Nodes > 0 {
-		parts = append(parts, fmt.Sprintf("Nodes: %d", a.Nodes))
-	}
-
-	return strings.Join(parts, ", ")
-}
-
-// === ENHANCED API METRICS FORMATTING ===
-
-// String returns a human-readable representation of APIMetrics
-func (a APIMetrics) String() string {
-	var parts []string
-
-	parts = append(parts, fmt.Sprintf("Collected: %s", a.CollectedAt.Format("15:04:05")))
-	parts = append(parts, fmt.Sprintf("Nodes: %d", a.Nodes))
-
-	// Queue status
-	totalQueue := a.ActiveRequests + a.QueuedRequests
-	if totalQueue > 0 {
-		parts = append(parts, fmt.Sprintf("Queue: %s active, %s queued",
-			humanize.Comma(a.ActiveRequests), humanize.Comma(a.QueuedRequests)))
-	}
-
-	// Last minute summary
-	lastMinute := a.LastMinuteTotal()
-	if lastMinute.Requests > 0 {
-		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-		parts = append(parts, fmt.Sprintf("Last Minute: %s req (%.1fms avg)",
-			humanize.Comma(lastMinute.Requests), avgLatency))
-	}
-
-	// Endpoints
-	if len(a.LastMinuteAPI) > 0 {
-		parts = append(parts, fmt.Sprintf("Active Endpoints: %d", len(a.LastMinuteAPI)))
-	}
-
-	return strings.Join(parts, " | ")
-}
-
-// GetDashboard returns a comprehensive executive dashboard for API metrics
-func (a APIMetrics) GetDashboard() map[string]string {
-	data := make(map[string]string)
-
-	lastMinute := a.LastMinuteTotal()
-	data["Active Nodes"] = fmt.Sprintf("%d nodes responding", a.Nodes)
-	data["Collection Time"] = a.CollectedAt.Format("15:04:05")
-
-	// Request queue status
-	totalQueue := a.ActiveRequests + a.QueuedRequests
-	if totalQueue > 0 {
-		data["Request Queue Status"] = fmt.Sprintf("%s active, %s queued",
-			humanize.Comma(a.ActiveRequests), humanize.Comma(a.QueuedRequests))
-	} else {
-		data["Request Queue Status"] = "No queued requests"
-	}
-
-	// Last minute performance
-	if lastMinute.Requests > 0 {
-		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-		data["Requests"] = fmt.Sprintf("%s req/min", humanize.Comma(lastMinute.Requests))
-		data["Average Latency"] = fmt.Sprintf("%.1f ms", avgLatency)
-
-		// Timing range analysis
-		if lastMinute.RequestTimeSecsMax > 0 {
-			data["Latency Range"] = fmt.Sprintf("%.1f - %.1f ms",
-				lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000)
-		}
-		if lastMinute.RespTTFBSecsMax > 0 {
-			data["TTFB Range"] = fmt.Sprintf("%.1f - %.1f ms",
-				lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000)
-		}
-		if lastMinute.ReqReadSecsMax > 0 {
-			data["Req Read Range"] = fmt.Sprintf("%.1f - %.1f ms",
-				lastMinute.ReqReadSecsMin*1000, lastMinute.ReqReadSecsMax*1000)
-		}
-		if lastMinute.RespSecsMax > 0 {
-			data["Resp Wr Range"] = fmt.Sprintf("%.1f - %.1f ms",
-				lastMinute.RespSecsMin*1000, lastMinute.RespSecsMax*1000)
-		}
-
-		// TTFB Analysis
-		if lastMinute.RespTTFBSecs > 0 {
-			avgTTFB := (lastMinute.RespTTFBSecs / float64(lastMinute.Requests)) * 1000
-			data["Avg Time to First Byte"] = fmt.Sprintf("%.1f ms", avgTTFB)
-		}
-	} else {
-		data["Request Rate (Last Minute)"] = "No requests"
-	}
-
-	// Throughput analysis
-	totalBytes := lastMinute.IncomingBytes + lastMinute.OutgoingBytes
-	if totalBytes > 0 {
-		data["Throughput"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(totalBytes)))
-		data["↳ Incoming"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.IncomingBytes)))
-		data["↳ Outgoing"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.OutgoingBytes)))
-	}
-
-	totalErrors := lastMinute.Errors4xx + lastMinute.Errors5xx
-	if totalErrors > 0 || lastMinute.Requests > 0 {
-		var errorRate float64
-		if lastMinute.Requests > 0 {
-			errorRate = float64(totalErrors) / float64(lastMinute.Requests) * 100
-		}
-		data["Error Rate (Last Minute)"] = fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)
-
-		if lastMinute.Errors4xx > 0 {
-			data["↳ 4xx Client Errors"] = fmt.Sprintf("%d", lastMinute.Errors4xx)
-		}
-		if lastMinute.Errors5xx > 0 {
-			data["↳ 5xx Server Errors"] = fmt.Sprintf("%d", lastMinute.Errors5xx)
-		}
-		if lastMinute.Canceled > 0 {
-			data["↳ Canceled Requests"] = fmt.Sprintf("%d", lastMinute.Canceled)
-		}
-	} else {
-		data["Error Rate (Last Minute)"] = "No errors detected"
-	}
-
-	// Rejection analysis
-	rejections := lastMinute.Rejected
-	totalRejected := rejections.Auth + rejections.Header + rejections.Invalid +
-		rejections.NotImplemented + rejections.RequestsTime
-	if totalRejected > 0 {
-		data["Rejected Requests"] = fmt.Sprintf("%d rejections", totalRejected)
-		if rejections.Auth > 0 {
-			data["↳ Authentication"] = fmt.Sprintf("%d", rejections.Auth)
-		}
-		if rejections.Header > 0 {
-			data["↳ Header Issues"] = fmt.Sprintf("%d", rejections.Header)
-		}
-		if rejections.Invalid > 0 {
-			data["↳ Invalid Requests"] = fmt.Sprintf("%d", rejections.Invalid)
-		}
-		if rejections.NotImplemented > 0 {
-			data["↳ Not Implemented"] = fmt.Sprintf("%d", rejections.NotImplemented)
-		}
-	}
-
-	since := a.SinceStart
-	if since.Requests > 0 {
-		data["Total Requests"] = humanize.Comma(since.Requests)
-		data["Total Data Processed"] = humanize.Bytes(uint64(since.IncomingBytes + since.OutgoingBytes))
-
-		lifetimeErrors := since.Errors4xx + since.Errors5xx
-		lifetimeErrorRate := float64(lifetimeErrors) / float64(since.Requests) * 100
-		data["Lifetime Error Rate"] = fmt.Sprintf("%.3f%%", lifetimeErrorRate)
-
-		if since.WallTimeSecs > 0 {
-			avgRPS := float64(since.Requests) / since.WallTimeSecs
-			data["Average RPS"] = fmt.Sprintf("%.1f req/sec", avgRPS)
-		}
-	}
-
-	// === ENDPOINT ANALYSIS ===
-	endpointCount := len(a.LastMinuteAPI)
-	if endpointCount > 0 {
-		data["    "] = ""
-
-		data["Active Endpoints"] = fmt.Sprintf("%d endpoints receiving traffic", endpointCount)
-
-		// Find top endpoints by request count
-		type endpointStat struct {
-			name  string
-			stats APIStats
-		}
-
-		var endpoints []endpointStat
-		for name, stats := range a.LastMinuteAPI {
-			endpoints = append(endpoints, endpointStat{name, stats})
-		}
-
-		// Simple bubble sort by request count
-		for i := 0; i < len(endpoints)-1; i++ {
-			for j := i + 1; j < len(endpoints); j++ {
-				if endpoints[i].stats.Requests < endpoints[j].stats.Requests {
-					endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
-				}
-			}
-		}
-
-		// Show top 5 busiest endpoints
-		maxShow := 5
-		if len(endpoints) < maxShow {
-			maxShow = len(endpoints)
-		}
-		for i := 0; i < maxShow; i++ {
-			ep := endpoints[i]
-			if ep.stats.Requests > 0 {
-				avgLatency := (ep.stats.RequestTimeSecs / float64(ep.stats.Requests)) * 1000
-				errors := ep.stats.Errors4xx + ep.stats.Errors5xx
-				data[fmt.Sprintf("↳ %s", ep.name)] = fmt.Sprintf("%s req, %.1fms avg, %d err",
-					humanize.Comma(ep.stats.Requests), avgLatency, errors)
-			}
-		}
-	}
-
-	return data
-}
-
 type APIMetricsNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -278,11 +32,11 @@ func (node *APIMetricsNode) GetLeafData() map[string]string {
 	// Create comprehensive executive-level API performance dashboard
 	return node.generateAPIOverviewDashboard()
 }
-func (node *APIMetricsNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APIMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *APIMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *APIMetricsNode) GetPath() string                 { return node.path }
-func (node *APIMetricsNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APIMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APIMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *APIMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *APIMetricsNode) GetPath() string                        { return node.path }
+func (node *APIMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 func (node *APIMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "last_minute":
@@ -312,7 +66,7 @@ func (node *APIMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // APILastMinuteNode shows last minute API statistics by endpoint
 type APILastMinuteNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -354,7 +108,7 @@ func (node *APILastMinuteNode) GetChildren() []MetricChild {
 }
 
 // generateAPIStatsDisplay creates a consistent API statistics display
-func generateAPIStatsDisplay(stats APIStats, endpointsCount int, showTopEndpoints bool, endpoints map[string]APIStats) map[string]string {
+func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopEndpoints bool, endpoints map[string]madmin.APIStats) map[string]string {
 	if stats.Requests == 0 {
 		data := make(map[string]string)
 		data["Status"] = "No API requests recorded"
@@ -486,7 +240,7 @@ func generateAPIStatsDisplay(stats APIStats, endpointsCount int, showTopEndpoint
 	if showTopEndpoints && endpoints != nil {
 		type endpointStat struct {
 			name  string
-			stats APIStats
+			stats madmin.APIStats
 		}
 
 		var endpointList []endpointStat
@@ -537,11 +291,11 @@ func (node *APILastMinuteNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastMinuteAPI), true, node.api.LastMinuteAPI)
 }
 
-func (node *APILastMinuteNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APILastMinuteNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *APILastMinuteNode) GetParent() MetricNode           { return node.parent }
-func (node *APILastMinuteNode) GetPath() string                 { return node.path }
-func (node *APILastMinuteNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APILastMinuteNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APILastMinuteNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *APILastMinuteNode) GetParent() MetricNode                  { return node.parent }
+func (node *APILastMinuteNode) GetPath() string                        { return node.path }
+func (node *APILastMinuteNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 func (node *APILastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if node.api.LastMinuteAPI == nil {
 		return nil, fmt.Errorf("no last minute API data available")
@@ -561,7 +315,7 @@ func (node *APILastMinuteNode) GetChild(name string) (MetricNode, error) {
 
 // APILastDayNode shows last day API statistics segmented
 type APILastDayNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -616,11 +370,11 @@ func (node *APILastDayNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APILastDayNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APILastDayNode) GetParent() MetricNode           { return node.parent }
-func (node *APILastDayNode) GetPath() string                 { return node.path }
-func (node *APILastDayNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APILastDayNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APILastDayNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APILastDayNode) GetParent() MetricNode                  { return node.parent }
+func (node *APILastDayNode) GetPath() string                        { return node.path }
+func (node *APILastDayNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 func (node *APILastDayNode) GetChild(name string) (MetricNode, error) {
 	// Handle "All" entry - shows aggregated time segments
@@ -648,7 +402,7 @@ func (node *APILastDayNode) GetChild(name string) (MetricNode, error) {
 
 // APILastDayAllNode shows aggregated time segments for all API endpoints
 type APILastDayAllNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -745,17 +499,17 @@ func (node *APILastDayAllNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayAllNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APILastDayAllNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APILastDayAllNode) GetParent() MetricNode           { return node.parent }
-func (node *APILastDayAllNode) GetPath() string                 { return node.path }
-func (node *APILastDayAllNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APILastDayAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APILastDayAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APILastDayAllNode) GetParent() MetricNode                  { return node.parent }
+func (node *APILastDayAllNode) GetPath() string                        { return node.path }
+func (node *APILastDayAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 // APILastDayEndpointNode shows time segments for a specific API endpoint
 type APILastDayEndpointNode struct {
-	api       *APIMetrics
+	api       *madmin.APIMetrics
 	apiName   string
-	segmented SegmentedAPIMetrics
+	segmented madmin.SegmentedAPIMetrics
 	parent    MetricNode
 	path      string
 }
@@ -819,7 +573,7 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 	// Handle "Total" entry
 	if name == "Total" {
 		// Calculate total stats for this endpoint
-		total := APIStats{}
+		total := madmin.APIStats{}
 		for _, segment := range node.segmented.Segments {
 			total.Merge(segment)
 		}
@@ -850,25 +604,27 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 
 func (node *APILastDayEndpointNode) GetLeafData() map[string]string {
 	// Calculate total stats for this endpoint
-	total := APIStats{}
+	total := madmin.APIStats{}
 	for _, segment := range node.segmented.Segments {
 		total.Merge(segment)
 	}
 	return generateAPIStatsDisplay(total, 1, false, nil)
 }
 
-func (node *APILastDayEndpointNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APILastDayEndpointNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APILastDayEndpointNode) GetParent() MetricNode           { return node.parent }
-func (node *APILastDayEndpointNode) GetPath() string                 { return node.path }
-func (node *APILastDayEndpointNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APILastDayEndpointNode) GetMetricType() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastDayEndpointNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *APILastDayEndpointNode) GetParent() MetricNode                  { return node.parent }
+func (node *APILastDayEndpointNode) GetPath() string                        { return node.path }
+func (node *APILastDayEndpointNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 func (node *APILastDayEndpointNode) ShouldPauseRefresh() bool {
 	return true
 }
 
 // APISinceStartNode shows API statistics since server start
 type APISinceStartNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -881,11 +637,11 @@ func (node *APISinceStartNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(node.api.SinceStart, 0, false, nil)
 }
 
-func (node *APISinceStartNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APISinceStartNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *APISinceStartNode) GetParent() MetricNode           { return node.parent }
-func (node *APISinceStartNode) GetPath() string                 { return node.path }
-func (node *APISinceStartNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APISinceStartNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APISinceStartNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *APISinceStartNode) GetParent() MetricNode                  { return node.parent }
+func (node *APISinceStartNode) GetPath() string                        { return node.path }
+func (node *APISinceStartNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 func (node *APISinceStartNode) ShouldPauseRefresh() bool {
 	return false
@@ -896,7 +652,7 @@ func (node *APISinceStartNode) GetChild(name string) (MetricNode, error) {
 
 // APILastDayTotalNode shows the total last day statistics
 type APILastDayTotalNode struct {
-	api    *APIMetrics
+	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
 }
@@ -910,11 +666,11 @@ func (node *APILastDayTotalNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayTotalNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APILastDayTotalNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APILastDayTotalNode) GetParent() MetricNode           { return node.parent }
-func (node *APILastDayTotalNode) GetPath() string                 { return node.path }
-func (node *APILastDayTotalNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APILastDayTotalNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APILastDayTotalNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APILastDayTotalNode) GetParent() MetricNode                  { return node.parent }
+func (node *APILastDayTotalNode) GetPath() string                        { return node.path }
+func (node *APILastDayTotalNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 func (node *APILastDayTotalNode) ShouldPauseRefresh() bool {
 	return true
@@ -926,7 +682,7 @@ func (node *APILastDayTotalNode) GetChild(name string) (MetricNode, error) {
 // APITimeSegmentNode shows statistics for a specific time segment
 // APITimeSegmentAllNode shows aggregated API statistics for a specific time segment
 type APITimeSegmentAllNode struct {
-	segment     APIStats
+	segment     madmin.APIStats
 	segmentTime time.Time
 	parent      MetricNode
 	path        string
@@ -944,18 +700,18 @@ func (node *APITimeSegmentAllNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(node.segment, 1, false, nil)
 }
 
-func (node *APITimeSegmentAllNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APITimeSegmentAllNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APITimeSegmentAllNode) GetParent() MetricNode           { return node.parent }
-func (node *APITimeSegmentAllNode) GetPath() string                 { return node.path }
-func (node *APITimeSegmentAllNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APITimeSegmentAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APITimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APITimeSegmentAllNode) GetParent() MetricNode                  { return node.parent }
+func (node *APITimeSegmentAllNode) GetPath() string                        { return node.path }
+func (node *APITimeSegmentAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 func (node *APITimeSegmentAllNode) ShouldPauseRefresh() bool {
 	return true
 }
 
 type APITimeSegmentNode struct {
-	segment     APIStats
+	segment     madmin.APIStats
 	segmentTime time.Time
 	parent      MetricNode
 	path        string
@@ -988,11 +744,11 @@ func (node *APITimeSegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APITimeSegmentNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APITimeSegmentNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APITimeSegmentNode) GetParent() MetricNode           { return node.parent }
-func (node *APITimeSegmentNode) GetPath() string                 { return node.path }
-func (node *APITimeSegmentNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APITimeSegmentNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APITimeSegmentNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APITimeSegmentNode) GetParent() MetricNode                  { return node.parent }
+func (node *APITimeSegmentNode) GetPath() string                        { return node.path }
+func (node *APITimeSegmentNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 func (node *APITimeSegmentNode) GetChild(name string) (MetricNode, error) {
 	if name == "All" {
 		return &APITimeSegmentAllNode{
@@ -1008,7 +764,7 @@ func (node *APITimeSegmentNode) GetChild(name string) (MetricNode, error) {
 // APIEndpointNode shows detailed statistics for a specific endpoint
 type APIEndpointNode struct {
 	endpoint string
-	stats    APIStats
+	stats    madmin.APIStats
 	parent   MetricNode
 	path     string
 }
@@ -1160,11 +916,11 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APIEndpointNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APIEndpointNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *APIEndpointNode) GetParent() MetricNode           { return node.parent }
-func (node *APIEndpointNode) GetPath() string                 { return node.path }
-func (node *APIEndpointNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APIEndpointNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APIEndpointNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *APIEndpointNode) GetParent() MetricNode                  { return node.parent }
+func (node *APIEndpointNode) GetPath() string                        { return node.path }
+func (node *APIEndpointNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 func (node *APIEndpointNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for endpoint node")
 }
@@ -1172,7 +928,7 @@ func (node *APIEndpointNode) GetChild(name string) (MetricNode, error) {
 // APISegmentedNode shows segmented statistics for a specific endpoint over the last day
 type APISegmentedNode struct {
 	endpoint  string
-	segmented SegmentedAPIMetrics
+	segmented madmin.SegmentedAPIMetrics
 	parent    MetricNode
 	path      string
 }
@@ -1229,11 +985,11 @@ func (node *APISegmentedNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APISegmentedNode) GetMetricType() MetricType       { return MetricsAPI }
-func (node *APISegmentedNode) GetMetricFlags() MetricFlags     { return MetricsDayStats }
-func (node *APISegmentedNode) GetParent() MetricNode           { return node.parent }
-func (node *APISegmentedNode) GetPath() string                 { return node.path }
-func (node *APISegmentedNode) RequiredMetricTypes() MetricType { return MetricsAPI }
+func (node *APISegmentedNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
+func (node *APISegmentedNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
+func (node *APISegmentedNode) GetParent() MetricNode                  { return node.parent }
+func (node *APISegmentedNode) GetPath() string                        { return node.path }
+func (node *APISegmentedNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
 
 func (node *APISegmentedNode) ShouldPauseRefresh() bool {
 	return true
@@ -1378,7 +1134,7 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 }
 
 // calculateAPIHealthScore computes health score based on error rates, latency, and queue status
-func (node *APIMetricsNode) calculateAPIHealthScore(lastMinute *APIStats) float64 {
+func (node *APIMetricsNode) calculateAPIHealthScore(lastMinute *madmin.APIStats) float64 {
 	score := 10.0
 
 	if lastMinute.Requests == 0 {
@@ -1443,7 +1199,7 @@ func (node *APIMetricsNode) getHealthStatus(score float64) string {
 }
 
 // generateAPIRecommendations provides actionable insights
-func (node *APIMetricsNode) generateAPIRecommendations(lastMinute, sinceStart *APIStats) []string {
+func (node *APIMetricsNode) generateAPIRecommendations(lastMinute, sinceStart *madmin.APIStats) []string {
 	var recommendations []string
 
 	if lastMinute.Requests == 0 {

@@ -2133,6 +2133,250 @@ func (a APIMetrics) LastDayTotal() APIStats {
 	return res
 }
 
+// String returns a human-readable representation of APIStats
+func (a APIStats) String() string {
+	if a.Requests == 0 {
+		return "No API requests recorded"
+	}
+
+	var parts []string
+
+	// Request summary
+	parts = append(parts, fmt.Sprintf("Requests: %s", humanize.Comma(a.Requests)))
+
+	// Timing information
+	if a.Requests > 0 {
+		avgLatency := (a.RequestTimeSecs / float64(a.Requests)) * 1000
+		parts = append(parts, fmt.Sprintf("Avg Latency: %.2fms", avgLatency))
+
+		if a.RequestTimeSecsMin > 0 && a.RequestTimeSecsMax > 0 {
+			parts = append(parts, fmt.Sprintf("Latency Range: %.1f-%.1fms",
+				a.RequestTimeSecsMin*1000, a.RequestTimeSecsMax*1000))
+		}
+	}
+
+	// Throughput
+	totalBytes := a.IncomingBytes + a.OutgoingBytes
+	if totalBytes > 0 {
+		parts = append(parts, fmt.Sprintf("Throughput: %s", humanize.Bytes(uint64(totalBytes))))
+		if a.Requests > 0 {
+			avgBytesPerReq := totalBytes / a.Requests
+			parts = append(parts, fmt.Sprintf("Avg/Request: %s", humanize.Bytes(uint64(avgBytesPerReq))))
+		}
+	}
+
+	// Error rates
+	totalErrors := a.Errors4xx + a.Errors5xx
+	if totalErrors > 0 {
+		errorRate := float64(totalErrors) / float64(a.Requests) * 100
+		parts = append(parts, fmt.Sprintf("Error Rate: %.2f%% (%d)", errorRate, totalErrors))
+	}
+
+	// Rejections
+	totalRejected := a.Rejected.Auth + a.Rejected.Header + a.Rejected.Invalid +
+		a.Rejected.NotImplemented + a.Rejected.RequestsTime
+	if totalRejected > 0 {
+		rejectionRate := float64(totalRejected) / float64(a.Requests) * 100
+		parts = append(parts, fmt.Sprintf("Rejection Rate: %.2f%% (%d)", rejectionRate, totalRejected))
+	}
+
+	if a.Nodes > 0 {
+		parts = append(parts, fmt.Sprintf("Nodes: %d", a.Nodes))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// String returns a human-readable representation of APIMetrics
+func (a APIMetrics) String() string {
+	var parts []string
+
+	parts = append(parts, fmt.Sprintf("Collected: %s", a.CollectedAt.Format("15:04:05")))
+	parts = append(parts, fmt.Sprintf("Nodes: %d", a.Nodes))
+
+	// Queue status
+	totalQueue := a.ActiveRequests + a.QueuedRequests
+	if totalQueue > 0 {
+		parts = append(parts, fmt.Sprintf("Queue: %s active, %s queued",
+			humanize.Comma(a.ActiveRequests), humanize.Comma(a.QueuedRequests)))
+	}
+
+	// Last minute summary
+	lastMinute := a.LastMinuteTotal()
+	if lastMinute.Requests > 0 {
+		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
+		parts = append(parts, fmt.Sprintf("Last Minute: %s req (%.1fms avg)",
+			humanize.Comma(lastMinute.Requests), avgLatency))
+	}
+
+	// Endpoints
+	if len(a.LastMinuteAPI) > 0 {
+		parts = append(parts, fmt.Sprintf("Active Endpoints: %d", len(a.LastMinuteAPI)))
+	}
+
+	return strings.Join(parts, " | ")
+}
+
+// GetDashboard returns a comprehensive executive dashboard for API metrics
+func (a APIMetrics) GetDashboard() map[string]string {
+	data := make(map[string]string)
+
+	lastMinute := a.LastMinuteTotal()
+	data["Active Nodes"] = fmt.Sprintf("%d nodes responding", a.Nodes)
+	data["Collection Time"] = a.CollectedAt.Format("15:04:05")
+
+	// Request queue status
+	totalQueue := a.ActiveRequests + a.QueuedRequests
+	if totalQueue > 0 {
+		data["Request Queue Status"] = fmt.Sprintf("%s active, %s queued",
+			humanize.Comma(a.ActiveRequests), humanize.Comma(a.QueuedRequests))
+	} else {
+		data["Request Queue Status"] = "No queued requests"
+	}
+
+	// Last minute performance
+	if lastMinute.Requests > 0 {
+		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
+		data["Requests"] = fmt.Sprintf("%s req/min", humanize.Comma(lastMinute.Requests))
+		data["Average Latency"] = fmt.Sprintf("%.1f ms", avgLatency)
+
+		// Timing range analysis
+		if lastMinute.RequestTimeSecsMax > 0 {
+			data["Latency Range"] = fmt.Sprintf("%.1f - %.1f ms",
+				lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000)
+		}
+		if lastMinute.RespTTFBSecsMax > 0 {
+			data["TTFB Range"] = fmt.Sprintf("%.1f - %.1f ms",
+				lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000)
+		}
+		if lastMinute.ReqReadSecsMax > 0 {
+			data["Req Read Range"] = fmt.Sprintf("%.1f - %.1f ms",
+				lastMinute.ReqReadSecsMin*1000, lastMinute.ReqReadSecsMax*1000)
+		}
+		if lastMinute.RespSecsMax > 0 {
+			data["Resp Wr Range"] = fmt.Sprintf("%.1f - %.1f ms",
+				lastMinute.RespSecsMin*1000, lastMinute.RespSecsMax*1000)
+		}
+
+		// TTFB Analysis
+		if lastMinute.RespTTFBSecs > 0 {
+			avgTTFB := (lastMinute.RespTTFBSecs / float64(lastMinute.Requests)) * 1000
+			data["Avg Time to First Byte"] = fmt.Sprintf("%.1f ms", avgTTFB)
+		}
+	} else {
+		data["Request Rate (Last Minute)"] = "No requests"
+	}
+
+	// Throughput analysis
+	totalBytes := lastMinute.IncomingBytes + lastMinute.OutgoingBytes
+	if totalBytes > 0 {
+		data["Throughput"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(totalBytes)))
+		data["↳ Incoming"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.IncomingBytes)))
+		data["↳ Outgoing"] = fmt.Sprintf("%s/min", humanize.Bytes(uint64(lastMinute.OutgoingBytes)))
+	}
+
+	totalErrors := lastMinute.Errors4xx + lastMinute.Errors5xx
+	if totalErrors > 0 || lastMinute.Requests > 0 {
+		var errorRate float64
+		if lastMinute.Requests > 0 {
+			errorRate = float64(totalErrors) / float64(lastMinute.Requests) * 100
+		}
+		data["Error Rate (Last Minute)"] = fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)
+
+		if lastMinute.Errors4xx > 0 {
+			data["↳ 4xx Client Errors"] = fmt.Sprintf("%d", lastMinute.Errors4xx)
+		}
+		if lastMinute.Errors5xx > 0 {
+			data["↳ 5xx Server Errors"] = fmt.Sprintf("%d", lastMinute.Errors5xx)
+		}
+		if lastMinute.Canceled > 0 {
+			data["↳ Canceled Requests"] = fmt.Sprintf("%d", lastMinute.Canceled)
+		}
+	} else {
+		data["Error Rate (Last Minute)"] = "No errors detected"
+	}
+
+	// Rejection analysis
+	rejections := lastMinute.Rejected
+	totalRejected := rejections.Auth + rejections.Header + rejections.Invalid +
+		rejections.NotImplemented + rejections.RequestsTime
+	if totalRejected > 0 {
+		data["Rejected Requests"] = fmt.Sprintf("%d rejections", totalRejected)
+		if rejections.Auth > 0 {
+			data["↳ Authentication"] = fmt.Sprintf("%d", rejections.Auth)
+		}
+		if rejections.Header > 0 {
+			data["↳ Header Issues"] = fmt.Sprintf("%d", rejections.Header)
+		}
+		if rejections.Invalid > 0 {
+			data["↳ Invalid Requests"] = fmt.Sprintf("%d", rejections.Invalid)
+		}
+		if rejections.NotImplemented > 0 {
+			data["↳ Not Implemented"] = fmt.Sprintf("%d", rejections.NotImplemented)
+		}
+	}
+
+	since := a.SinceStart
+	if since.Requests > 0 {
+		data["Total Requests"] = humanize.Comma(since.Requests)
+		data["Total Data Processed"] = humanize.Bytes(uint64(since.IncomingBytes + since.OutgoingBytes))
+
+		lifetimeErrors := since.Errors4xx + since.Errors5xx
+		lifetimeErrorRate := float64(lifetimeErrors) / float64(since.Requests) * 100
+		data["Lifetime Error Rate"] = fmt.Sprintf("%.3f%%", lifetimeErrorRate)
+
+		if since.WallTimeSecs > 0 {
+			avgRPS := float64(since.Requests) / since.WallTimeSecs
+			data["Average RPS"] = fmt.Sprintf("%.1f req/sec", avgRPS)
+		}
+	}
+
+	// === ENDPOINT ANALYSIS ===
+	endpointCount := len(a.LastMinuteAPI)
+	if endpointCount > 0 {
+		data["    "] = ""
+
+		data["Active Endpoints"] = fmt.Sprintf("%d endpoints receiving traffic", endpointCount)
+
+		// Find top endpoints by request count
+		type endpointStat struct {
+			name  string
+			stats APIStats
+		}
+
+		var endpoints []endpointStat
+		for name, stats := range a.LastMinuteAPI {
+			endpoints = append(endpoints, endpointStat{name, stats})
+		}
+
+		// Simple bubble sort by request count
+		for i := 0; i < len(endpoints)-1; i++ {
+			for j := i + 1; j < len(endpoints); j++ {
+				if endpoints[i].stats.Requests < endpoints[j].stats.Requests {
+					endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
+				}
+			}
+		}
+
+		// Show top 5 busiest endpoints
+		maxShow := 5
+		if len(endpoints) < maxShow {
+			maxShow = len(endpoints)
+		}
+		for i := 0; i < maxShow; i++ {
+			ep := endpoints[i]
+			if ep.stats.Requests > 0 {
+				avgLatency := (ep.stats.RequestTimeSecs / float64(ep.stats.Requests)) * 1000
+				errors := ep.stats.Errors4xx + ep.stats.Errors5xx
+				data[fmt.Sprintf("↳ %s", ep.name)] = fmt.Sprintf("%s req, %.1fms avg, %d err",
+					humanize.Comma(ep.stats.Requests), avgLatency, errors)
+			}
+		}
+	}
+
+	return data
+}
+
 // Segmenter implement interface on pointers.
 type Segmenter[T any] interface {
 	msgp.Encodable
@@ -2245,4 +2489,55 @@ func (s *Segmented[T, PT]) Total() T {
 	}
 	// Since we are merging across APIs must reset track node count.
 	return res
+}
+
+// ClusterAPIStats is a simplified version of madmin.APIStats that is used to
+// report cluster-wide API metrics.
+type ClusterAPIStats struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Nodes responded to the request.
+	Nodes int `json:"nodes"`
+
+	// Errors will contain any errors encountered while collecting the metrics.
+	Errors []string `json:"errors,omitempty"`
+
+	// Number of active requests.
+	ActiveRequests int64 `json:"activeRequests,omitempty"`
+
+	// Number of queued requests.
+	QueuedRequests int64 `json:"queuedRequests,omitempty"`
+
+	// lastMinute is the combined stats for the last minute.
+	LastMinute APIStats `json:"lastMinute"`
+
+	// LastDay is the combined stats for the last day.
+	LastDay APIStats `json:"lastDay"`
+
+	// LastDaySegmented are the stats for the last day, accumulated in time segments.
+	LastDaySegmented SegmentedAPIMetrics `json:"lastDaySegmented"`
+}
+
+// ClusterAPIStats makes an admin call to retrieve general API metrics.
+func (adm *AdminClient) ClusterAPIStats(ctx context.Context) (res *ClusterAPIStats, err error) {
+	path := adminAPIPrefix + "/api/stats"
+
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet, requestData{
+			relPath: path,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	res = &ClusterAPIStats{}
+	err = json.NewDecoder(resp.Body).Decode(res)
+	return res, err
 }

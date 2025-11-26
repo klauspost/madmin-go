@@ -1,18 +1,20 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/minio/madmin-go/v4"
 )
 
 type NetMetricsNavigator struct {
-	net    *NetMetrics
+	net    *madmin.NetMetrics
 	parent MetricNode
 	path   string
 }
 
 // NewNetMetricsNavigator creates a new network metrics navigator
-func NewNetMetricsNavigator(net *NetMetrics, parent MetricNode, path string) *NetMetricsNavigator {
+func NewNetMetricsNavigator(net *madmin.NetMetrics, parent MetricNode, path string) *NetMetricsNavigator {
 	return &NetMetricsNavigator{net: net, parent: parent, path: path}
 }
 
@@ -24,11 +26,11 @@ func (node *NetMetricsNavigator) GetParent() MetricNode {
 	return node.parent
 }
 
-func (node *NetMetricsNavigator) GetMetricType() MetricType {
-	return MetricNet
+func (node *NetMetricsNavigator) GetMetricType() madmin.MetricType {
+	return madmin.MetricNet
 }
 
-func (node *NetMetricsNavigator) GetMetricFlags() MetricFlags {
+func (node *NetMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -111,8 +113,8 @@ func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
 }
 
-func (node *NetMetricsNavigator) RequiredMetricTypes() MetricType {
-	return MetricNet
+func (node *NetMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricNet
 }
 
 func (node *NetMetricsNavigator) ShouldPauseRefresh() bool {
@@ -121,7 +123,7 @@ func (node *NetMetricsNavigator) ShouldPauseRefresh() bool {
 
 // NetInterfacesNode shows network interface stats
 type NetInterfacesNode struct {
-	metrics *NetMetrics
+	metrics *madmin.NetMetrics
 	parent  MetricNode
 	path    string
 }
@@ -134,11 +136,11 @@ func (node *NetInterfacesNode) GetParent() MetricNode {
 	return node.parent
 }
 
-func (node *NetInterfacesNode) GetMetricType() MetricType {
-	return MetricNet
+func (node *NetInterfacesNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricNet
 }
 
-func (node *NetInterfacesNode) GetMetricFlags() MetricFlags {
+func (node *NetInterfacesNode) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -203,8 +205,8 @@ func (node *NetInterfacesNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("interface %q not found", name)
 }
 
-func (node *NetInterfacesNode) RequiredMetricTypes() MetricType {
-	return MetricNet
+func (node *NetInterfacesNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricNet
 }
 
 func (node *NetInterfacesNode) ShouldPauseRefresh() bool {
@@ -214,7 +216,7 @@ func (node *NetInterfacesNode) ShouldPauseRefresh() bool {
 // NetInterfaceNode shows individual interface stats
 type NetInterfaceNode struct {
 	interfaceName string
-	stats         *InterfaceStats
+	stats         *madmin.InterfaceStats
 	parent        MetricNode
 	path          string
 }
@@ -227,11 +229,11 @@ func (node *NetInterfaceNode) GetParent() MetricNode {
 	return node.parent
 }
 
-func (node *NetInterfaceNode) GetMetricType() MetricType {
-	return MetricNet
+func (node *NetInterfaceNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricNet
 }
 
-func (node *NetInterfaceNode) GetMetricFlags() MetricFlags {
+func (node *NetInterfaceNode) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -272,8 +274,8 @@ func (node *NetInterfaceNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
 }
 
-func (node *NetInterfaceNode) RequiredMetricTypes() MetricType {
-	return MetricNet
+func (node *NetInterfaceNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricNet
 }
 
 func (node *NetInterfaceNode) ShouldPauseRefresh() bool {
@@ -282,7 +284,7 @@ func (node *NetInterfaceNode) ShouldPauseRefresh() bool {
 
 // NetInternodeNode shows internode communication stats
 type NetInternodeNode struct {
-	metrics *NetMetrics
+	metrics *madmin.NetMetrics
 	parent  MetricNode
 	path    string
 }
@@ -295,11 +297,11 @@ func (node *NetInternodeNode) GetParent() MetricNode {
 	return node.parent
 }
 
-func (node *NetInternodeNode) GetMetricType() MetricType {
-	return MetricNet
+func (node *NetInternodeNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricNet
 }
 
-func (node *NetInternodeNode) GetMetricFlags() MetricFlags {
+func (node *NetInternodeNode) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -341,8 +343,8 @@ func (node *NetInternodeNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
 }
 
-func (node *NetInternodeNode) RequiredMetricTypes() MetricType {
-	return MetricNet
+func (node *NetInternodeNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricNet
 }
 
 func (node *NetInternodeNode) ShouldPauseRefresh() bool {

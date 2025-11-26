@@ -1,20 +1,21 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 // ProcessMetricsNode provides navigation for process metrics
 type ProcessMetricsNode struct {
-	process *ProcessMetrics
+	process *madmin.ProcessMetrics
 	parent  MetricNode `msg:"-"`
 	path    string
 }
 
-func NewProcessMetricsNode(process *ProcessMetrics, parent MetricNode, path string) *ProcessMetricsNode {
+func NewProcessMetricsNode(process *madmin.ProcessMetrics, parent MetricNode, path string) *ProcessMetricsNode {
 	return &ProcessMetricsNode{process: process, parent: parent, path: path}
 }
 
@@ -121,20 +122,20 @@ func (node *ProcessMetricsNode) GetChild(name string) (MetricNode, error) {
 	}
 }
 
-func (node *ProcessMetricsNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessMetricsNode) GetPath() string                 { return node.path }
-func (node *ProcessMetricsNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsProcess }
+func (node *ProcessMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *ProcessMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *ProcessMetricsNode) GetPath() string                        { return node.path }
+func (node *ProcessMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsProcess }
 
 // ProcessCPUTimesNode displays CPU timing statistics
 type ProcessCPUTimesNode struct {
-	cpuTimes *ProcessCPUTimes
+	cpuTimes *madmin.ProcessCPUTimes
 	parent   MetricNode `msg:"-"`
 	path     string
 }
 
-func NewProcessCPUTimesNode(cpuTimes *ProcessCPUTimes, parent MetricNode, path string) *ProcessCPUTimesNode {
+func NewProcessCPUTimesNode(cpuTimes *madmin.ProcessCPUTimes, parent MetricNode, path string) *ProcessCPUTimesNode {
 	return &ProcessCPUTimesNode{cpuTimes: cpuTimes, parent: parent, path: path}
 }
 
@@ -211,20 +212,22 @@ func (node *ProcessCPUTimesNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("CPU times node has no children")
 }
 
-func (node *ProcessCPUTimesNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessCPUTimesNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessCPUTimesNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessCPUTimesNode) GetPath() string                 { return node.path }
-func (node *ProcessCPUTimesNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessCPUTimesNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessCPUTimesNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessCPUTimesNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessCPUTimesNode) GetPath() string                    { return node.path }
+func (node *ProcessCPUTimesNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // ProcessMemoryInfoNode displays memory usage information
 type ProcessMemoryInfoNode struct {
-	memInfo *ProcessMemoryInfo
+	memInfo *madmin.ProcessMemoryInfo
 	parent  MetricNode `msg:"-"`
 	path    string
 }
 
-func NewProcessMemoryInfoNode(memInfo *ProcessMemoryInfo, parent MetricNode, path string) *ProcessMemoryInfoNode {
+func NewProcessMemoryInfoNode(memInfo *madmin.ProcessMemoryInfo, parent MetricNode, path string) *ProcessMemoryInfoNode {
 	return &ProcessMemoryInfoNode{memInfo: memInfo, parent: parent, path: path}
 }
 
@@ -284,20 +287,22 @@ func (node *ProcessMemoryInfoNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory info node has no children")
 }
 
-func (node *ProcessMemoryInfoNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessMemoryInfoNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessMemoryInfoNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessMemoryInfoNode) GetPath() string                 { return node.path }
-func (node *ProcessMemoryInfoNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessMemoryInfoNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessMemoryInfoNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessMemoryInfoNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessMemoryInfoNode) GetPath() string                    { return node.path }
+func (node *ProcessMemoryInfoNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // ProcessIOCountersNode displays I/O statistics
 type ProcessIOCountersNode struct {
-	ioCounters *ProcessIOCounters
+	ioCounters *madmin.ProcessIOCounters
 	parent     MetricNode `msg:"-"`
 	path       string
 }
 
-func NewProcessIOCountersNode(ioCounters *ProcessIOCounters, parent MetricNode, path string) *ProcessIOCountersNode {
+func NewProcessIOCountersNode(ioCounters *madmin.ProcessIOCounters, parent MetricNode, path string) *ProcessIOCountersNode {
 	return &ProcessIOCountersNode{ioCounters: ioCounters, parent: parent, path: path}
 }
 
@@ -355,20 +360,22 @@ func (node *ProcessIOCountersNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("I/O counters node has no children")
 }
 
-func (node *ProcessIOCountersNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessIOCountersNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessIOCountersNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessIOCountersNode) GetPath() string                 { return node.path }
-func (node *ProcessIOCountersNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessIOCountersNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessIOCountersNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessIOCountersNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessIOCountersNode) GetPath() string                    { return node.path }
+func (node *ProcessIOCountersNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // ProcessCtxSwitchesNode displays context switch statistics
 type ProcessCtxSwitchesNode struct {
-	ctxSwitches *ProcessCtxSwitches
+	ctxSwitches *madmin.ProcessCtxSwitches
 	parent      MetricNode `msg:"-"`
 	path        string
 }
 
-func NewProcessCtxSwitchesNode(ctxSwitches *ProcessCtxSwitches, parent MetricNode, path string) *ProcessCtxSwitchesNode {
+func NewProcessCtxSwitchesNode(ctxSwitches *madmin.ProcessCtxSwitches, parent MetricNode, path string) *ProcessCtxSwitchesNode {
 	return &ProcessCtxSwitchesNode{ctxSwitches: ctxSwitches, parent: parent, path: path}
 }
 
@@ -418,20 +425,22 @@ func (node *ProcessCtxSwitchesNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("context switches node has no children")
 }
 
-func (node *ProcessCtxSwitchesNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessCtxSwitchesNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessCtxSwitchesNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessCtxSwitchesNode) GetPath() string                 { return node.path }
-func (node *ProcessCtxSwitchesNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessCtxSwitchesNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessCtxSwitchesNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessCtxSwitchesNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessCtxSwitchesNode) GetPath() string                    { return node.path }
+func (node *ProcessCtxSwitchesNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // ProcessPageFaultsNode displays page fault statistics
 type ProcessPageFaultsNode struct {
-	pageFaults *ProcessPageFaults
+	pageFaults *madmin.ProcessPageFaults
 	parent     MetricNode `msg:"-"`
 	path       string
 }
 
-func NewProcessPageFaultsNode(pageFaults *ProcessPageFaults, parent MetricNode, path string) *ProcessPageFaultsNode {
+func NewProcessPageFaultsNode(pageFaults *madmin.ProcessPageFaults, parent MetricNode, path string) *ProcessPageFaultsNode {
 	return &ProcessPageFaultsNode{pageFaults: pageFaults, parent: parent, path: path}
 }
 
@@ -494,20 +503,22 @@ func (node *ProcessPageFaultsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("page faults node has no children")
 }
 
-func (node *ProcessPageFaultsNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessPageFaultsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessPageFaultsNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessPageFaultsNode) GetPath() string                 { return node.path }
-func (node *ProcessPageFaultsNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessPageFaultsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessPageFaultsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessPageFaultsNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessPageFaultsNode) GetPath() string                    { return node.path }
+func (node *ProcessPageFaultsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // ProcessMemoryMapsNode displays memory mapping details
 type ProcessMemoryMapsNode struct {
-	memMaps *ProcessMemoryMaps
+	memMaps *madmin.ProcessMemoryMaps
 	parent  MetricNode `msg:"-"`
 	path    string
 }
 
-func NewProcessMemoryMapsNode(memMaps *ProcessMemoryMaps, parent MetricNode, path string) *ProcessMemoryMapsNode {
+func NewProcessMemoryMapsNode(memMaps *madmin.ProcessMemoryMaps, parent MetricNode, path string) *ProcessMemoryMapsNode {
 	return &ProcessMemoryMapsNode{memMaps: memMaps, parent: parent, path: path}
 }
 
@@ -576,11 +587,13 @@ func (node *ProcessMemoryMapsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory maps node has no children")
 }
 
-func (node *ProcessMemoryMapsNode) GetMetricType() MetricType       { return MetricsProcess }
-func (node *ProcessMemoryMapsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *ProcessMemoryMapsNode) GetParent() MetricNode           { return node.parent }
-func (node *ProcessMemoryMapsNode) GetPath() string                 { return node.path }
-func (node *ProcessMemoryMapsNode) RequiredMetricTypes() MetricType { return MetricsProcess }
+func (node *ProcessMemoryMapsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessMemoryMapsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessMemoryMapsNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessMemoryMapsNode) GetPath() string                    { return node.path }
+func (node *ProcessMemoryMapsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsProcess
+}
 
 // formatDuration formats a duration in a human-readable way
 func formatDuration(d time.Duration) string {

@@ -1,10 +1,11 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
 	"strconv"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
@@ -32,13 +33,13 @@ func calculatePercentage(used, total uint64) string {
 
 // MemMetricsNavigator provides navigation for Memory metrics
 type MemMetricsNavigator struct {
-	mem    *MemMetrics
+	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
 }
 
 // NewMemMetricsNavigator creates a new memory metrics navigator
-func NewMemMetricsNavigator(mem *MemMetrics, parent MetricNode, path string) *MemMetricsNavigator {
+func NewMemMetricsNavigator(mem *madmin.MemMetrics, parent MetricNode, path string) *MemMetricsNavigator {
 	return &MemMetricsNavigator{mem: mem, parent: parent, path: path}
 }
 
@@ -103,11 +104,11 @@ func (node *MemMetricsNavigator) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemMetricsNavigator) GetMetricType() MetricType {
-	return MetricsMem
+func (node *MemMetricsNavigator) GetMetricType() madmin.MetricType {
+	return madmin.MetricsMem
 }
 
-func (node *MemMetricsNavigator) GetMetricFlags() MetricFlags {
+func (node *MemMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -119,8 +120,8 @@ func (node *MemMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *MemMetricsNavigator) RequiredMetricTypes() MetricType {
-	return MetricsMem
+func (node *MemMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsMem
 }
 
 func (node *MemMetricsNavigator) ShouldPauseRefresh() bool {
@@ -144,12 +145,12 @@ func (node *MemMetricsNavigator) GetChild(name string) (MetricNode, error) {
 
 // MemUsageNode handles core memory usage statistics
 type MemUsageNode struct {
-	mem    *MemMetrics
+	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
 }
 
-func NewMemUsageNode(mem *MemMetrics, parent MetricNode, path string) *MemUsageNode {
+func NewMemUsageNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemUsageNode {
 	return &MemUsageNode{mem: mem, parent: parent, path: path}
 }
 
@@ -218,11 +219,11 @@ func (node *MemUsageNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemUsageNode) GetMetricType() MetricType       { return MetricsMem }
-func (node *MemUsageNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemUsageNode) GetParent() MetricNode           { return node.parent }
-func (node *MemUsageNode) GetPath() string                 { return node.path }
-func (node *MemUsageNode) RequiredMetricTypes() MetricType { return MetricsMem }
+func (node *MemUsageNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
+func (node *MemUsageNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *MemUsageNode) GetParent() MetricNode                  { return node.parent }
+func (node *MemUsageNode) GetPath() string                        { return node.path }
+func (node *MemUsageNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
 
 func (node *MemUsageNode) ShouldPauseRefresh() bool {
 	return false
@@ -234,12 +235,12 @@ func (node *MemUsageNode) GetChild(name string) (MetricNode, error) {
 
 // MemSystemNode handles system memory details
 type MemSystemNode struct {
-	mem    *MemMetrics
+	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
 }
 
-func NewMemSystemNode(mem *MemMetrics, parent MetricNode, path string) *MemSystemNode {
+func NewMemSystemNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemSystemNode {
 	return &MemSystemNode{mem: mem, parent: parent, path: path}
 }
 
@@ -311,11 +312,11 @@ func (node *MemSystemNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemSystemNode) GetMetricType() MetricType       { return MetricsMem }
-func (node *MemSystemNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemSystemNode) GetParent() MetricNode           { return node.parent }
-func (node *MemSystemNode) GetPath() string                 { return node.path }
-func (node *MemSystemNode) RequiredMetricTypes() MetricType { return MetricsMem }
+func (node *MemSystemNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
+func (node *MemSystemNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *MemSystemNode) GetParent() MetricNode                  { return node.parent }
+func (node *MemSystemNode) GetPath() string                        { return node.path }
+func (node *MemSystemNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
 
 func (node *MemSystemNode) ShouldPauseRefresh() bool {
 	return false
@@ -327,12 +328,12 @@ func (node *MemSystemNode) GetChild(name string) (MetricNode, error) {
 
 // MemSwapNode handles swap space analysis
 type MemSwapNode struct {
-	mem    *MemMetrics
+	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
 }
 
-func NewMemSwapNode(mem *MemMetrics, parent MetricNode, path string) *MemSwapNode {
+func NewMemSwapNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemSwapNode {
 	return &MemSwapNode{mem: mem, parent: parent, path: path}
 }
 
@@ -416,11 +417,11 @@ func (node *MemSwapNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemSwapNode) GetMetricType() MetricType       { return MetricsMem }
-func (node *MemSwapNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemSwapNode) GetParent() MetricNode           { return node.parent }
-func (node *MemSwapNode) GetPath() string                 { return node.path }
-func (node *MemSwapNode) RequiredMetricTypes() MetricType { return MetricsMem }
+func (node *MemSwapNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
+func (node *MemSwapNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *MemSwapNode) GetParent() MetricNode                  { return node.parent }
+func (node *MemSwapNode) GetPath() string                        { return node.path }
+func (node *MemSwapNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
 
 func (node *MemSwapNode) ShouldPauseRefresh() bool {
 	return false
@@ -432,12 +433,12 @@ func (node *MemSwapNode) GetChild(name string) (MetricNode, error) {
 
 // MemLimitsNode handles memory limits and cgroup configuration
 type MemLimitsNode struct {
-	mem    *MemMetrics
+	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
 }
 
-func NewMemLimitsNode(mem *MemMetrics, parent MetricNode, path string) *MemLimitsNode {
+func NewMemLimitsNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemLimitsNode {
 	return &MemLimitsNode{mem: mem, parent: parent, path: path}
 }
 
@@ -518,11 +519,11 @@ func (node *MemLimitsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemLimitsNode) GetMetricType() MetricType       { return MetricsMem }
-func (node *MemLimitsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemLimitsNode) GetParent() MetricNode           { return node.parent }
-func (node *MemLimitsNode) GetPath() string                 { return node.path }
-func (node *MemLimitsNode) RequiredMetricTypes() MetricType { return MetricsMem }
+func (node *MemLimitsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
+func (node *MemLimitsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *MemLimitsNode) GetParent() MetricNode                  { return node.parent }
+func (node *MemLimitsNode) GetPath() string                        { return node.path }
+func (node *MemLimitsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
 
 func (node *MemLimitsNode) ShouldPauseRefresh() bool {
 	return false

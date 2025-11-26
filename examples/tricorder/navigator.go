@@ -7,14 +7,15 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v4"
+	"github.com/minio/madmin-go/v4/mnav"
 )
 
 // NavigationState manages the current state of navigation through metrics
 type NavigationState struct {
 	adminClient       *madmin.AdminClient
 	config            Config
-	navigator         madmin.MetricNavigator
-	currentNode       madmin.MetricNode
+	navigator         mnav.MetricNavigator
+	currentNode       mnav.MetricNode
 	currentPath       string
 	pathHistory       []string // Navigation history for back functionality
 	selectedIndex     int      // Currently selected child index
@@ -37,7 +38,7 @@ func NewNavigationState(adminClient *madmin.AdminClient, metrics *madmin.Realtim
 
 	// If initial metrics provided, use them
 	if metrics != nil {
-		navigator := madmin.NewRealtimeMetricsNavigator(metrics)
+		navigator := mnav.NewRealtimeMetricsNavigator(metrics)
 		root := navigator.Root()
 		nav.navigator = navigator
 		nav.currentNode = root
@@ -93,9 +94,9 @@ func (ns *NavigationState) ShouldPauseRefresh() bool {
 }
 
 // GetChildren returns the available children of the current node
-func (ns *NavigationState) GetChildren() []madmin.MetricChild {
+func (ns *NavigationState) GetChildren() []mnav.MetricChild {
 	if ns.currentNode == nil {
-		return []madmin.MetricChild{}
+		return []mnav.MetricChild{}
 	}
 	return ns.currentNode.GetChildren()
 }
@@ -332,7 +333,7 @@ func (ns *NavigationState) Refresh() error {
 	}
 
 	// Create new navigator
-	ns.navigator = madmin.NewRealtimeMetricsNavigator(&metrics)
+	ns.navigator = mnav.NewRealtimeMetricsNavigator(&metrics)
 
 	// Try to navigate back to current path
 	currentPath := ns.currentPath
@@ -352,7 +353,7 @@ func (ns *NavigationState) Refresh() error {
 		children := node.GetChildren()
 		if len(children) > 0 {
 			// Get the name of the previously selected item
-			oldChildren := []madmin.MetricChild{}
+			oldChildren := []mnav.MetricChild{}
 			if ns.currentNode != nil {
 				oldChildren = ns.currentNode.GetChildren()
 			}

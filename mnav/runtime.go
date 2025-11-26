@@ -1,4 +1,4 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
@@ -41,13 +42,13 @@ func formatRuntimeNumber(n uint64) string {
 
 // RuntimeMetricsNavigator provides navigation for Go Runtime metrics
 type RuntimeMetricsNavigator struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
 // NewRuntimeMetricsNavigator creates a new runtime metrics navigator
-func NewRuntimeMetricsNavigator(runtime *RuntimeMetrics, parent MetricNode, path string) *RuntimeMetricsNavigator {
+func NewRuntimeMetricsNavigator(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *RuntimeMetricsNavigator {
 	return &RuntimeMetricsNavigator{runtime: runtime, parent: parent, path: path}
 }
 
@@ -90,11 +91,11 @@ func (node *RuntimeMetricsNavigator) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RuntimeMetricsNavigator) GetMetricType() MetricType {
-	return MetricsRuntime
+func (node *RuntimeMetricsNavigator) GetMetricType() madmin.MetricType {
+	return madmin.MetricsRuntime
 }
 
-func (node *RuntimeMetricsNavigator) GetMetricFlags() MetricFlags {
+func (node *RuntimeMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -106,8 +107,8 @@ func (node *RuntimeMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *RuntimeMetricsNavigator) RequiredMetricTypes() MetricType {
-	return MetricsRuntime
+func (node *RuntimeMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsRuntime
 }
 
 func (node *RuntimeMetricsNavigator) ShouldPauseRefresh() bool {
@@ -133,12 +134,12 @@ func (node *RuntimeMetricsNavigator) GetChild(name string) (MetricNode, error) {
 
 // GCMetricsNode handles navigation for garbage collection metrics
 type GCMetricsNode struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
-func NewGCMetricsNode(runtime *RuntimeMetrics, parent MetricNode, path string) *GCMetricsNode {
+func NewGCMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *GCMetricsNode {
 	return &GCMetricsNode{runtime: runtime, parent: parent, path: path}
 }
 
@@ -214,11 +215,11 @@ func (node *GCMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *GCMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *GCMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *GCMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *GCMetricsNode) GetPath() string                 { return node.path }
-func (node *GCMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
+func (node *GCMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
+func (node *GCMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *GCMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *GCMetricsNode) GetPath() string                        { return node.path }
+func (node *GCMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
 
 func (node *GCMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -230,12 +231,12 @@ func (node *GCMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // MemoryMetricsNode handles navigation for memory management metrics
 type MemoryMetricsNode struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
-func NewMemoryMetricsNode(runtime *RuntimeMetrics, parent MetricNode, path string) *MemoryMetricsNode {
+func NewMemoryMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *MemoryMetricsNode {
 	return &MemoryMetricsNode{runtime: runtime, parent: parent, path: path}
 }
 
@@ -305,11 +306,11 @@ func (node *MemoryMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemoryMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *MemoryMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *MemoryMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *MemoryMetricsNode) GetPath() string                 { return node.path }
-func (node *MemoryMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
+func (node *MemoryMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
+func (node *MemoryMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *MemoryMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *MemoryMetricsNode) GetPath() string                        { return node.path }
+func (node *MemoryMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
 
 func (node *MemoryMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -321,12 +322,12 @@ func (node *MemoryMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // SchedulerMetricsNode handles navigation for Go scheduler metrics
 type SchedulerMetricsNode struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
-func NewSchedulerMetricsNode(runtime *RuntimeMetrics, parent MetricNode, path string) *SchedulerMetricsNode {
+func NewSchedulerMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *SchedulerMetricsNode {
 	return &SchedulerMetricsNode{runtime: runtime, parent: parent, path: path}
 }
 
@@ -380,11 +381,13 @@ func (node *SchedulerMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *SchedulerMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *SchedulerMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *SchedulerMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *SchedulerMetricsNode) GetPath() string                 { return node.path }
-func (node *SchedulerMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
+func (node *SchedulerMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRuntime }
+func (node *SchedulerMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *SchedulerMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *SchedulerMetricsNode) GetPath() string                    { return node.path }
+func (node *SchedulerMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsRuntime
+}
 
 func (node *SchedulerMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -396,12 +399,12 @@ func (node *SchedulerMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // CPUClassesMetricsNode handles navigation for CPU time class metrics
 type CPUClassesMetricsNode struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
-func NewCPUClassesMetricsNode(runtime *RuntimeMetrics, parent MetricNode, path string) *CPUClassesMetricsNode {
+func NewCPUClassesMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *CPUClassesMetricsNode {
 	return &CPUClassesMetricsNode{runtime: runtime, parent: parent, path: path}
 }
 
@@ -453,11 +456,13 @@ func (node *CPUClassesMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *CPUClassesMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *CPUClassesMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *CPUClassesMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *CPUClassesMetricsNode) GetPath() string                 { return node.path }
-func (node *CPUClassesMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
+func (node *CPUClassesMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRuntime }
+func (node *CPUClassesMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *CPUClassesMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *CPUClassesMetricsNode) GetPath() string                    { return node.path }
+func (node *CPUClassesMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsRuntime
+}
 
 func (node *CPUClassesMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -469,12 +474,12 @@ func (node *CPUClassesMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // SyncMetricsNode handles navigation for synchronization metrics
 type SyncMetricsNode struct {
-	runtime *RuntimeMetrics
+	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
 }
 
-func NewSyncMetricsNode(runtime *RuntimeMetrics, parent MetricNode, path string) *SyncMetricsNode {
+func NewSyncMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *SyncMetricsNode {
 	return &SyncMetricsNode{runtime: runtime, parent: parent, path: path}
 }
 
@@ -516,11 +521,11 @@ func (node *SyncMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *SyncMetricsNode) GetMetricType() MetricType       { return MetricsRuntime }
-func (node *SyncMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *SyncMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *SyncMetricsNode) GetPath() string                 { return node.path }
-func (node *SyncMetricsNode) RequiredMetricTypes() MetricType { return MetricsRuntime }
+func (node *SyncMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
+func (node *SyncMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *SyncMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *SyncMetricsNode) GetPath() string                        { return node.path }
+func (node *SyncMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
 
 func (node *SyncMetricsNode) ShouldPauseRefresh() bool {
 	return false

@@ -1,16 +1,13 @@
-package madmin
+package mnav
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 // MetricNavigator provides navigation functionality
@@ -23,11 +20,11 @@ type MetricNavigator interface {
 type MetricNode interface {
 	GetChildren() []MetricChild
 	GetLeafData() map[string]string
-	GetMetricType() MetricType
-	GetMetricFlags() MetricFlags
+	GetMetricType() madmin.MetricType
+	GetMetricFlags() madmin.MetricFlags
 	GetParent() MetricNode
 	GetPath() string
-	RequiredMetricTypes() MetricType
+	RequiredMetricTypes() madmin.MetricType
 	GetChild(name string) (MetricNode, error)
 	ShouldPauseRefresh() bool
 }
@@ -38,64 +35,13 @@ type MetricChild struct {
 	Description string
 }
 
-// ClusterAPIStats is a simplified version of madmin.APIStats that is used to
-// report cluster-wide API metrics.
-type ClusterAPIStats struct {
-	// Time these metrics were collected
-	CollectedAt time.Time `json:"collected"`
-
-	// Nodes responded to the request.
-	Nodes int `json:"nodes"`
-
-	// Errors will contain any errors encountered while collecting the metrics.
-	Errors []string `json:"errors,omitempty"`
-
-	// Number of active requests.
-	ActiveRequests int64 `json:"activeRequests,omitempty"`
-
-	// Number of queued requests.
-	QueuedRequests int64 `json:"queuedRequests,omitempty"`
-
-	// lastMinute is the combined stats for the last minute.
-	LastMinute APIStats `json:"lastMinute"`
-
-	// LastDay is the combined stats for the last day.
-	LastDay APIStats `json:"lastDay"`
-
-	// LastDaySegmented are the stats for the last day, accumulated in time segments.
-	LastDaySegmented SegmentedAPIMetrics `json:"lastDaySegmented"`
-}
-
-// ClusterAPIStats makes an admin call to retrieve general API metrics.
-func (adm *AdminClient) ClusterAPIStats(ctx context.Context) (res *ClusterAPIStats, err error) {
-	path := adminAPIPrefix + "/api/stats"
-
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet, requestData{
-			relPath: path,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer closeResponse(resp)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	res = &ClusterAPIStats{}
-	err = json.NewDecoder(resp.Body).Decode(res)
-	return res, err
-}
-
 // RealtimeMetricsNavigator implements MetricNavigator for RealtimeMetrics
 type RealtimeMetricsNavigator struct {
-	metrics *RealtimeMetrics
+	metrics *madmin.RealtimeMetrics
 }
 
 // NewRealtimeMetricsNavigator creates a new navigator for RealtimeMetrics
-func NewRealtimeMetricsNavigator(metrics *RealtimeMetrics) MetricNavigator {
+func NewRealtimeMetricsNavigator(metrics *madmin.RealtimeMetrics) MetricNavigator {
 	return &RealtimeMetricsNavigator{metrics: metrics}
 }
 
@@ -130,7 +76,7 @@ func (nav *RealtimeMetricsNavigator) Root() MetricNode {
 
 // RealtimeMetricsNode represents the root node of RealtimeMetrics
 type RealtimeMetricsNode struct {
-	metrics *RealtimeMetrics
+	metrics *madmin.RealtimeMetrics
 }
 
 func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
@@ -179,20 +125,20 @@ func (node *RealtimeMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RealtimeMetricsNode) GetMetricType() MetricType {
-	return MetricsNone // All types available at root
+func (node *RealtimeMetricsNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricsNone // All types available at root
 }
 
-func (node *RealtimeMetricsNode) GetMetricFlags() MetricFlags {
-	var flags MetricFlags
+func (node *RealtimeMetricsNode) GetMetricFlags() madmin.MetricFlags {
+	var flags madmin.MetricFlags
 	if len(node.metrics.ByHost) > 0 {
-		flags |= MetricsByHost
+		flags |= madmin.MetricsByHost
 	}
 	if len(node.metrics.ByDisk) > 0 {
-		flags |= MetricsByDisk
+		flags |= madmin.MetricsByDisk
 	}
 	if len(node.metrics.ByDiskSet) > 0 {
-		flags |= MetricsByDiskSet
+		flags |= madmin.MetricsByDiskSet
 	}
 	return flags
 }
@@ -205,8 +151,8 @@ func (node *RealtimeMetricsNode) GetPath() string {
 	return "/"
 }
 
-func (node *RealtimeMetricsNode) RequiredMetricTypes() MetricType {
-	return MetricsNone // All types available at root
+func (node *RealtimeMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsNone // All types available at root
 }
 
 func (node *RealtimeMetricsNode) ShouldPauseRefresh() bool {
@@ -247,12 +193,12 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "by_host":
 		return &MapNode{
 			data:        node.metrics.ByHost,
-			metricType:  MetricsNone,
-			metricFlags: MetricsByHost,
+			metricType:  madmin.MetricsNone,
+			metricFlags: madmin.MetricsByHost,
 			parent:      node,
 			path:        "by_host",
 			nodeFactory: func(key string, value interface{}) MetricNode {
-				if metrics, ok := value.(Metrics); ok {
+				if metrics, ok := value.(madmin.Metrics); ok {
 					return &MetricsNode{metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key)}
 				}
 				return nil
@@ -261,12 +207,12 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "by_disk":
 		return &MapNode{
 			data:        node.metrics.ByDisk,
-			metricType:  MetricsDisk,
-			metricFlags: MetricsByDisk,
+			metricType:  madmin.MetricsDisk,
+			metricFlags: madmin.MetricsByDisk,
 			parent:      node,
 			path:        "by_disk",
 			nodeFactory: func(key string, value interface{}) MetricNode {
-				if diskMetric, ok := value.(DiskMetric); ok {
+				if diskMetric, ok := value.(madmin.DiskMetric); ok {
 					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", key))
 				}
 				return nil
@@ -275,8 +221,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "by_disk_set":
 		return &DiskSetMapNode{
 			data:        node.metrics.ByDiskSet,
-			metricType:  MetricsDisk,
-			metricFlags: MetricsByDiskSet,
+			metricType:  madmin.MetricsDisk,
+			metricFlags: madmin.MetricsByDiskSet,
 			parent:      node,
 			path:        "by_disk_set",
 		}, nil
@@ -287,7 +233,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // MetricsNode handles navigation within a Metrics struct
 type MetricsNode struct {
-	metrics *Metrics
+	metrics *madmin.Metrics
 	parent  MetricNode
 	path    string
 }
@@ -318,11 +264,11 @@ func (node *MetricsNode) GetLeafData() map[string]string {
 	return nil // MetricsNode is a navigation node, not a leaf
 }
 
-func (node *MetricsNode) GetMetricType() MetricType {
-	return MetricsNone // All types available at Metrics level
+func (node *MetricsNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricsNone // All types available at Metrics level
 }
 
-func (node *MetricsNode) GetMetricFlags() MetricFlags {
+func (node *MetricsNode) GetMetricFlags() madmin.MetricFlags {
 	return 0 // No specific flags at this level
 }
 
@@ -334,8 +280,8 @@ func (node *MetricsNode) GetPath() string {
 	return node.path
 }
 
-func (node *MetricsNode) RequiredMetricTypes() MetricType {
-	return MetricsNone // All types available at Metrics level
+func (node *MetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsNone // All types available at Metrics level
 }
 
 func (node *MetricsNode) ShouldPauseRefresh() bool {
@@ -378,8 +324,8 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 // MapNode handles dynamic map-based navigation
 type MapNode struct {
 	data        interface{}
-	metricType  MetricType
-	metricFlags MetricFlags
+	metricType  madmin.MetricType
+	metricFlags madmin.MetricFlags
 	parent      MetricNode
 	path        string
 	nodeFactory func(key string, value interface{}) MetricNode
@@ -392,7 +338,7 @@ func (node *MapNode) ShouldPauseUpdates() bool {
 
 func (node *MapNode) GetChildren() []MetricChild {
 	switch data := node.data.(type) {
-	case map[string]Metrics:
+	case map[string]madmin.Metrics:
 		var children []MetricChild
 		var keys []string
 		// Extract and sort keys
@@ -405,7 +351,7 @@ func (node *MapNode) GetChildren() []MetricChild {
 			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Metrics for %s", k)})
 		}
 		return children
-	case map[string]DiskMetric:
+	case map[string]madmin.DiskMetric:
 		var children []MetricChild
 		var keys []string
 		// Extract and sort keys
@@ -418,7 +364,7 @@ func (node *MapNode) GetChildren() []MetricChild {
 			children = append(children, MetricChild{Name: k, Description: fmt.Sprintf("Disk metrics for %s", k)})
 		}
 		return children
-	case map[int]map[int]DiskMetric:
+	case map[int]map[int]madmin.DiskMetric:
 		var children []MetricChild
 		var keys []int
 		// Extract and sort keys
@@ -445,7 +391,7 @@ func (node *MapNode) GetPath() string {
 	return node.path
 }
 
-func (node *MapNode) RequiredMetricTypes() MetricType {
+func (node *MapNode) RequiredMetricTypes() madmin.MetricType {
 	return node.metricType
 }
 
@@ -455,22 +401,22 @@ func (node *MapNode) ShouldPauseRefresh() bool {
 
 func (node *MapNode) getMapSize() int {
 	switch data := node.data.(type) {
-	case map[string]Metrics:
+	case map[string]madmin.Metrics:
 		return len(data)
-	case map[string]DiskMetric:
+	case map[string]madmin.DiskMetric:
 		return len(data)
-	case map[int]map[int]DiskMetric:
+	case map[int]map[int]madmin.DiskMetric:
 		return len(data)
 	default:
 		return 0
 	}
 }
 
-func (node *MapNode) GetMetricType() MetricType {
+func (node *MapNode) GetMetricType() madmin.MetricType {
 	return node.metricType
 }
 
-func (node *MapNode) GetMetricFlags() MetricFlags {
+func (node *MapNode) GetMetricFlags() madmin.MetricFlags {
 	return node.metricFlags
 }
 
@@ -480,15 +426,15 @@ func (node *MapNode) GetParent() MetricNode {
 
 func (node *MapNode) GetChild(name string) (MetricNode, error) {
 	switch data := node.data.(type) {
-	case map[string]Metrics:
+	case map[string]madmin.Metrics:
 		if value, exists := data[name]; exists {
 			return node.nodeFactory(name, value), nil
 		}
-	case map[string]DiskMetric:
+	case map[string]madmin.DiskMetric:
 		if value, exists := data[name]; exists {
 			return node.nodeFactory(name, value), nil
 		}
-	case map[int]map[int]DiskMetric:
+	case map[int]map[int]madmin.DiskMetric:
 		// This is handled by DiskSetMapNode
 		return nil, fmt.Errorf("use DiskSetMapNode for nested disk set maps")
 	}
@@ -497,9 +443,9 @@ func (node *MapNode) GetChild(name string) (MetricNode, error) {
 
 // DiskSetMapNode handles the nested map structure for ByDiskSet
 type DiskSetMapNode struct {
-	data        map[int]map[int]DiskMetric
-	metricType  MetricType
-	metricFlags MetricFlags
+	data        map[int]map[int]madmin.DiskMetric
+	metricType  madmin.MetricType
+	metricFlags madmin.MetricFlags
 	parent      MetricNode
 	path        string
 }
@@ -670,11 +616,11 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *DiskSetMapNode) GetMetricType() MetricType {
+func (node *DiskSetMapNode) GetMetricType() madmin.MetricType {
 	return node.metricType
 }
 
-func (node *DiskSetMapNode) GetMetricFlags() MetricFlags {
+func (node *DiskSetMapNode) GetMetricFlags() madmin.MetricFlags {
 	return node.metricFlags
 }
 
@@ -686,7 +632,7 @@ func (node *DiskSetMapNode) GetPath() string {
 	return node.path
 }
 
-func (node *DiskSetMapNode) RequiredMetricTypes() MetricType {
+func (node *DiskSetMapNode) RequiredMetricTypes() madmin.MetricType {
 	return node.metricType
 }
 
@@ -715,14 +661,14 @@ func (node *DiskSetMapNode) GetChild(name string) (MetricNode, error) {
 // DiskSetPoolNavigator provides enhanced navigation for disk set pools
 type DiskSetPoolNavigator struct {
 	poolID      int
-	poolSets    map[int]DiskMetric
-	metricType  MetricType
-	metricFlags MetricFlags
+	poolSets    map[int]madmin.DiskMetric
+	metricType  madmin.MetricType
+	metricFlags madmin.MetricFlags
 	parent      MetricNode
 	path        string
 }
 
-func NewDiskSetPoolNavigator(poolID int, poolSets map[int]DiskMetric, metricType MetricType, metricFlags MetricFlags, parent MetricNode, path string) *DiskSetPoolNavigator {
+func NewDiskSetPoolNavigator(poolID int, poolSets map[int]madmin.DiskMetric, metricType madmin.MetricType, metricFlags madmin.MetricFlags, parent MetricNode, path string) *DiskSetPoolNavigator {
 	return &DiskSetPoolNavigator{
 		poolID:      poolID,
 		poolSets:    poolSets,
@@ -850,12 +796,12 @@ func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *DiskSetPoolNavigator) GetMetricType() MetricType       { return node.metricType }
-func (node *DiskSetPoolNavigator) GetMetricFlags() MetricFlags     { return node.metricFlags }
-func (node *DiskSetPoolNavigator) GetParent() MetricNode           { return node.parent }
-func (node *DiskSetPoolNavigator) GetPath() string                 { return node.path }
-func (node *DiskSetPoolNavigator) RequiredMetricTypes() MetricType { return node.metricType }
-func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool        { return false }
+func (node *DiskSetPoolNavigator) GetMetricType() madmin.MetricType       { return node.metricType }
+func (node *DiskSetPoolNavigator) GetMetricFlags() madmin.MetricFlags     { return node.metricFlags }
+func (node *DiskSetPoolNavigator) GetParent() MetricNode                  { return node.parent }
+func (node *DiskSetPoolNavigator) GetPath() string                        { return node.path }
+func (node *DiskSetPoolNavigator) RequiredMetricTypes() madmin.MetricType { return node.metricType }
+func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool               { return false }
 
 func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 	if !strings.HasPrefix(name, "set_") {
@@ -878,7 +824,7 @@ func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 // Stub implementations for all other metric node types
 
 type OSMetricsNode struct {
-	os     *OSMetrics
+	os     *madmin.OSMetrics
 	parent MetricNode
 	path   string
 }
@@ -895,12 +841,12 @@ func (node *OSMetricsNode) GetChildren() []MetricChild {
 		{Name: "sensors", Description: "Temperature sensor metrics"},
 	}
 }
-func (node *OSMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *OSMetricsNode) GetMetricType() MetricType       { return MetricsOS }
-func (node *OSMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *OSMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *OSMetricsNode) GetPath() string                 { return node.path }
-func (node *OSMetricsNode) RequiredMetricTypes() MetricType { return MetricsOS }
+func (node *OSMetricsNode) GetLeafData() map[string]string         { return nil }
+func (node *OSMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
+func (node *OSMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
+func (node *OSMetricsNode) GetParent() MetricNode                  { return node.parent }
+func (node *OSMetricsNode) GetPath() string                        { return node.path }
+func (node *OSMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
 
 func (node *OSMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -910,7 +856,7 @@ func (node *OSMetricsNode) GetChild(name string) (MetricNode, error) {
 }
 
 type BatchJobMetricsNode struct {
-	batch  *BatchJobMetrics
+	batch  *madmin.BatchJobMetrics
 	parent MetricNode
 	path   string
 }
@@ -925,12 +871,14 @@ func (node *BatchJobMetricsNode) GetChildren() []MetricChild {
 		{Name: "jobs", Description: "Individual batch jobs by ID"},
 	}
 }
-func (node *BatchJobMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *BatchJobMetricsNode) GetMetricType() MetricType       { return MetricsBatchJobs }
-func (node *BatchJobMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *BatchJobMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *BatchJobMetricsNode) GetPath() string                 { return node.path }
-func (node *BatchJobMetricsNode) RequiredMetricTypes() MetricType { return MetricsBatchJobs }
+func (node *BatchJobMetricsNode) GetLeafData() map[string]string     { return nil }
+func (node *BatchJobMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsBatchJobs }
+func (node *BatchJobMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *BatchJobMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *BatchJobMetricsNode) GetPath() string                    { return node.path }
+func (node *BatchJobMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsBatchJobs
+}
 
 func (node *BatchJobMetricsNode) ShouldPauseRefresh() bool {
 	return false
@@ -940,7 +888,7 @@ func (node *BatchJobMetricsNode) GetChild(name string) (MetricNode, error) {
 }
 
 type SiteResyncMetricsNode struct {
-	resync *SiteResyncMetrics
+	resync *madmin.SiteResyncMetrics
 	parent MetricNode
 	path   string
 }
@@ -957,12 +905,14 @@ func (node *SiteResyncMetricsNode) GetChildren() []MetricChild {
 		{Name: "failed_buckets", Description: "Buckets that failed to sync"},
 	}
 }
-func (node *SiteResyncMetricsNode) GetLeafData() map[string]string  { return nil }
-func (node *SiteResyncMetricsNode) GetMetricType() MetricType       { return MetricsSiteResync }
-func (node *SiteResyncMetricsNode) GetMetricFlags() MetricFlags     { return 0 }
-func (node *SiteResyncMetricsNode) GetParent() MetricNode           { return node.parent }
-func (node *SiteResyncMetricsNode) GetPath() string                 { return node.path }
-func (node *SiteResyncMetricsNode) RequiredMetricTypes() MetricType { return MetricsSiteResync }
+func (node *SiteResyncMetricsNode) GetLeafData() map[string]string     { return nil }
+func (node *SiteResyncMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsSiteResync }
+func (node *SiteResyncMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *SiteResyncMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *SiteResyncMetricsNode) GetPath() string                    { return node.path }
+func (node *SiteResyncMetricsNode) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsSiteResync
+}
 
 func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
 	return false

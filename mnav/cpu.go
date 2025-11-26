@@ -1,4 +1,4 @@
-package madmin
+package mnav
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/minio/madmin-go/v4"
 )
 
 //go:generate msgp  -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
@@ -28,7 +29,7 @@ func formatFrequency(freq uint64) string {
 
 // CPUMetricsNavigator provides navigation for CPU metrics
 type CPUMetricsNavigator struct {
-	cpu    *CPUMetrics
+	cpu    *madmin.CPUMetrics
 	parent MetricNode
 	path   string
 }
@@ -38,7 +39,7 @@ func (node *CPUMetricsNavigator) ShouldPauseRefresh() bool {
 }
 
 // NewCPUMetricsNavigator creates a new CPU metrics navigator
-func NewCPUMetricsNavigator(cpu *CPUMetrics, parent MetricNode, path string) *CPUMetricsNavigator {
+func NewCPUMetricsNavigator(cpu *madmin.CPUMetrics, parent MetricNode, path string) *CPUMetricsNavigator {
 	return &CPUMetricsNavigator{cpu: cpu, parent: parent, path: path}
 }
 
@@ -318,11 +319,11 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *CPUMetricsNavigator) GetMetricType() MetricType {
-	return MetricsCPU
+func (node *CPUMetricsNavigator) GetMetricType() madmin.MetricType {
+	return madmin.MetricsCPU
 }
 
-func (node *CPUMetricsNavigator) GetMetricFlags() MetricFlags {
+func (node *CPUMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
 	return 0
 }
 
@@ -334,8 +335,8 @@ func (node *CPUMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *CPUMetricsNavigator) RequiredMetricTypes() MetricType {
-	return MetricsCPU
+func (node *CPUMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
+	return madmin.MetricsCPU
 }
 
 func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
