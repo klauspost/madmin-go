@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"time"
+	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
 )
 
@@ -27,7 +28,6 @@ func NewScannerMetricsNode(scanner *madmin.ScannerMetrics, parent MetricNode, pa
 
 func (node *ScannerMetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
-		{Name: "buckets", Description: "Per-bucket scanning statistics"},
 		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
 		{Name: "lifetime_ilm", Description: "Accumulated ILM operations since server start"},
 		{Name: "last_minute", Description: "Last minute operation statistics"},
@@ -37,30 +37,91 @@ func (node *ScannerMetricsNode) GetChildren() []MetricChild {
 }
 
 func (node *ScannerMetricsNode) GetLeafData() map[string]string {
-	data := map[string]string{
-		"collected_at":        node.scanner.CollectedAt.Format(time.RFC3339),
-		"ongoing_buckets":     strconv.Itoa(node.scanner.OngoingBuckets),
-		"bucket_count":        strconv.Itoa(len(node.scanner.PerBucketStats)),
-		"lifetime_op_types":   strconv.Itoa(len(node.scanner.LifeTimeOps)),
-		"lifetime_ilm_types":  strconv.Itoa(len(node.scanner.LifeTimeILM)),
-		"active_paths":        strconv.Itoa(len(node.scanner.ActivePaths)),
-		"excessive_paths":     strconv.Itoa(len(node.scanner.ExcessivePrefixes)),
-		"last_minute_actions": strconv.Itoa(len(node.scanner.LastMinute.Actions)),
-		"last_minute_ilm":     strconv.Itoa(len(node.scanner.LastMinute.ILM)),
+	data := map[string]string{}
+
+	// Scanning Overview
+	data["Scanning buckets"] = fmt.Sprintf("%d", node.scanner.OngoingBuckets)
+	data["Active drives"] = strconv.Itoa(len(node.scanner.ActivePaths))
+	data["Big prefixes"] = strconv.Itoa(len(node.scanner.ExcessivePrefixes))
+	data["Total buckets"] = strconv.Itoa(len(node.scanner.PerBucketStats)) + " currently scanning."
+
+	// Last Minute Statistics (if available)
+	if len(node.scanner.LastMinute.Actions) > 0 {
+
+		var actionNames []string
+		for actionName := range node.scanner.LastMinute.Actions {
+			actionNames = append(actionNames, actionName)
+		}
+		sort.Strings(actionNames)
+
+		for _, actionName := range actionNames {
+			action := node.scanner.LastMinute.Actions[actionName]
+			if action.Count > 0 {
+				avgTimeMs := float64(action.AccTime) / float64(action.Count) / 1e6 // Convert to milliseconds
+
+				switch actionName {
+				case "scan":
+					data["Objects/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "versions":
+					data["Versions/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "heal":
+					data["Heal checks/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "read":
+					data["Metadata/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "check-replication":
+					data["Replication/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "verify-deleted":
+					data["Verify del/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				case "yield":
+					totalTimeS := float64(action.AccTime) / 1e9
+					data["Yield/min"] = fmt.Sprintf("%.1fs total", totalTimeS)
+				default:
+					data[strings.Title(actionName)+"/min"] = fmt.Sprintf("%s (%.1fms avg)",
+						humanize.Comma(int64(action.Count)), avgTimeMs)
+				}
+			}
+		}
 	}
 
-	// Add totals for lifetime ops
-	var totalLifetimeOps uint64
+	// ILM Statistics (if available)
+	if len(node.scanner.LastMinute.ILM) > 0 {
+		var totalILMCount uint64
+		var totalILMTime uint64
+		for _, ilmAction := range node.scanner.LastMinute.ILM {
+			totalILMCount += ilmAction.Count
+			totalILMTime += ilmAction.AccTime
+		}
+		if totalILMCount > 0 {
+			avgILMTime := float64(totalILMTime) / float64(totalILMCount) / 1e6
+			data["ILM/min"] = fmt.Sprintf("%s (%.1fms avg)",
+				humanize.Comma(int64(totalILMCount)), avgILMTime)
+		}
+	}
+
+	// Lifetime Totals
+	var totalLifetimeOps, totalLifetimeILM uint64
 	for _, count := range node.scanner.LifeTimeOps {
 		totalLifetimeOps += count
 	}
-	data["total_lifetime_ops"] = strconv.FormatUint(totalLifetimeOps, 10)
-
-	var totalLifetimeILM uint64
 	for _, count := range node.scanner.LifeTimeILM {
 		totalLifetimeILM += count
 	}
-	data["total_lifetime_ilm"] = strconv.FormatUint(totalLifetimeILM, 10)
+
+	if totalLifetimeOps > 0 {
+		data["Lifetime ops"] = humanize.Comma(int64(totalLifetimeOps))
+	}
+	if totalLifetimeILM > 0 {
+		data["Lifetime ILM"] = humanize.Comma(int64(totalLifetimeILM))
+	}
+
+	// System Info
+	data["Last updated"] = node.scanner.CollectedAt.Format("15:04:05")
 
 	return data
 }
@@ -91,8 +152,6 @@ func (node *ScannerMetricsNode) ShouldPauseRefresh() bool {
 
 func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
-	case "buckets":
-		return NewScannerBucketsNode(node.scanner.PerBucketStats, node, fmt.Sprintf("%s/buckets", node.path)), nil
 	case "lifetime_ops":
 		return NewScannerLifetimeOpsNode(node.scanner.LifeTimeOps, node, fmt.Sprintf("%s/lifetime_ops", node.path)), nil
 	case "lifetime_ilm":
@@ -110,83 +169,6 @@ func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 
 // Helper nodes for scanner sub-components
 
-type ScannerBucketsNode struct {
-	buckets map[string][]madmin.BucketScanInfo
-	parent  MetricNode
-	path    string
-}
-
-func NewScannerBucketsNode(buckets map[string][]madmin.BucketScanInfo, parent MetricNode, path string) *ScannerBucketsNode {
-	return &ScannerBucketsNode{buckets: buckets, parent: parent, path: path}
-}
-
-func (node *ScannerBucketsNode) GetChildren() []MetricChild {
-	var children []MetricChild
-	for bucket := range node.buckets {
-		children = append(children, MetricChild{
-			Name:        bucket,
-			Description: fmt.Sprintf("Scan info for bucket %s", bucket),
-		})
-	}
-	sort.Slice(children, func(i, j int) bool {
-		return children[i].Name < children[j].Name
-	})
-	return children
-}
-
-func (node *ScannerBucketsNode) GetLeafData() map[string]string {
-	return map[string]string{
-		"bucket_count": strconv.Itoa(len(node.buckets)),
-	}
-}
-
-func (node *ScannerBucketsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
-func (node *ScannerBucketsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *ScannerBucketsNode) GetParent() MetricNode                  { return node.parent }
-func (node *ScannerBucketsNode) GetPath() string                        { return node.path }
-func (node *ScannerBucketsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
-
-func (node *ScannerBucketsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *ScannerBucketsNode) GetChild(name string) (MetricNode, error) {
-	if stats, exists := node.buckets[name]; exists {
-		return NewScannerBucketStatsNode(stats, node, fmt.Sprintf("%s/%s", node.path, name)), nil
-	}
-	return nil, fmt.Errorf("bucket not found: %s", name)
-}
-
-type ScannerBucketStatsNode struct {
-	stats  []madmin.BucketScanInfo
-	parent MetricNode
-	path   string
-}
-
-func NewScannerBucketStatsNode(stats []madmin.BucketScanInfo, parent MetricNode, path string) *ScannerBucketStatsNode {
-	return &ScannerBucketStatsNode{stats: stats, parent: parent, path: path}
-}
-
-func (node *ScannerBucketStatsNode) GetChildren() []MetricChild { return []MetricChild{} }
-func (node *ScannerBucketStatsNode) GetLeafData() map[string]string {
-	return map[string]string{
-		"scan_sets": strconv.Itoa(len(node.stats)),
-	}
-}
-func (node *ScannerBucketStatsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
-func (node *ScannerBucketStatsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *ScannerBucketStatsNode) GetParent() MetricNode              { return node.parent }
-func (node *ScannerBucketStatsNode) GetPath() string                    { return node.path }
-func (node *ScannerBucketStatsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
-func (node *ScannerBucketStatsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *ScannerBucketStatsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("bucket stats is a leaf node")
-}
-
 type ScannerLifetimeOpsNode struct {
 	ops    map[string]uint64
 	parent MetricNode
@@ -198,29 +180,37 @@ func NewScannerLifetimeOpsNode(ops map[string]uint64, parent MetricNode, path st
 }
 
 func (node *ScannerLifetimeOpsNode) GetChildren() []MetricChild {
-	var children []MetricChild
-	for opType := range node.ops {
-		children = append(children, MetricChild{
-			Name:        opType,
-			Description: fmt.Sprintf("Count for operation type %s", opType),
-		})
-	}
-	sort.Slice(children, func(i, j int) bool {
-		return children[i].Name < children[j].Name
-	})
-	return children
+	// No children - all operation data should be displayed as leaf data
+	return []MetricChild{}
 }
 
 func (node *ScannerLifetimeOpsNode) GetLeafData() map[string]string {
-	data := map[string]string{
-		"op_types": strconv.Itoa(len(node.ops)),
+	data := map[string]string{}
+
+	if len(node.ops) == 0 {
+		data["Status"] = "No lifetime operations recorded"
+		return data
 	}
+
 	var total uint64
-	for opType, count := range node.ops {
-		data[opType] = strconv.FormatUint(count, 10)
+	var opTypes []string
+	for opType := range node.ops {
+		opTypes = append(opTypes, opType)
+	}
+	sort.Strings(opTypes)
+
+	// Display each operation type with formatted count
+	for _, opType := range opTypes {
+		count := node.ops[opType]
+		data[opType] = fmt.Sprintf("%s operations", humanize.Comma(int64(count)))
 		total += count
 	}
-	data["total"] = strconv.FormatUint(total, 10)
+
+	// Add total if multiple operation types
+	if len(opTypes) > 1 {
+		data["Total Operations"] = fmt.Sprintf("%s operations", humanize.Comma(int64(total)))
+	}
+
 	return data
 }
 
@@ -236,10 +226,7 @@ func (node *ScannerLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
 }
 func (node *ScannerLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
-	if count, exists := node.ops[name]; exists {
-		return NewScannerOpCountNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
-	}
-	return nil, fmt.Errorf("operation type not found: %s", name)
+	return nil, fmt.Errorf("no children available - operation counts are displayed as leaf data")
 }
 
 type ScannerLifetimeILMNode struct {
@@ -315,12 +302,7 @@ func NewScannerLastMinuteNode(lastMinute *struct {
 
 func (node *ScannerLastMinuteNode) GetChildren() []MetricChild {
 	var children []MetricChild
-	if len(node.lastMinute.Actions) > 0 {
-		children = append(children, MetricChild{
-			Name:        "actions",
-			Description: "Scanner actions performed in the last minute",
-		})
-	}
+	// Only show ILM as a child if it has data - actions should be displayed inline
 	if len(node.lastMinute.ILM) > 0 {
 		children = append(children, MetricChild{
 			Name:        "ilm",
@@ -331,10 +313,44 @@ func (node *ScannerLastMinuteNode) GetChildren() []MetricChild {
 }
 
 func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
-	return map[string]string{
-		"action_types": strconv.Itoa(len(node.lastMinute.Actions)),
-		"ilm_types":    strconv.Itoa(len(node.lastMinute.ILM)),
+	data := map[string]string{}
+
+	// Add action statistics directly
+	if len(node.lastMinute.Actions) > 0 {
+		var totalCount, totalTime uint64
+		var actionTypes []string
+		for actionType := range node.lastMinute.Actions {
+			actionTypes = append(actionTypes, actionType)
+		}
+		sort.Strings(actionTypes)
+
+		for _, actionType := range actionTypes {
+			action := node.lastMinute.Actions[actionType]
+			if action.Count > 0 {
+				avgTime := float64(action.AccTime) / float64(action.Count)
+				data[actionType] = fmt.Sprintf("%d operations, %.2f ms avg", action.Count, avgTime/1e6)
+				totalCount += action.Count
+				totalTime += action.AccTime
+			} else {
+				data[actionType] = "0 operations"
+			}
+		}
+
+		// Add total if multiple action types
+		if len(actionTypes) > 1 && totalCount > 0 {
+			avgTime := float64(totalTime) / float64(totalCount)
+			data["Total Actions"] = fmt.Sprintf("%d operations, %.2f ms avg", totalCount, avgTime/1e6)
+		}
+	} else {
+		data["Actions"] = "No scanner actions in the last minute"
 	}
+
+	// Add ILM summary
+	if len(node.lastMinute.ILM) > 0 {
+		data["ILM Types Available"] = strconv.Itoa(len(node.lastMinute.ILM))
+	}
+
+	return data
 }
 
 func (node *ScannerLastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
@@ -350,8 +366,6 @@ func (node *ScannerLastMinuteNode) ShouldPauseRefresh() bool {
 }
 func (node *ScannerLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	switch name {
-	case "actions":
-		return NewScannerTimedActionsNode(node.lastMinute.Actions, node, fmt.Sprintf("%s/actions", node.path)), nil
 	case "ilm":
 		return NewScannerTimedActionsNode(node.lastMinute.ILM, node, fmt.Sprintf("%s/ilm", node.path)), nil
 	default:
@@ -370,32 +384,51 @@ func NewScannerTimedActionsNode(actions map[string]madmin.TimedAction, parent Me
 }
 
 func (node *ScannerTimedActionsNode) GetChildren() []MetricChild {
-	var children []MetricChild
-	for actionType := range node.actions {
-		children = append(children, MetricChild{
-			Name:        actionType,
-			Description: fmt.Sprintf("Timing statistics for %s actions", actionType),
-		})
-	}
-	sort.Slice(children, func(i, j int) bool {
-		return children[i].Name < children[j].Name
-	})
-	return children
+	// No children - all action data should be displayed as leaf data
+	return []MetricChild{}
 }
 
 func (node *ScannerTimedActionsNode) GetLeafData() map[string]string {
-	data := map[string]string{
-		"action_types": strconv.Itoa(len(node.actions)),
+	data := map[string]string{}
+
+	if len(node.actions) == 0 {
+		data["Status"] = "No scanner actions recorded in the last minute"
+		return data
 	}
+
 	var totalCount, totalTime uint64
-	for actionType, action := range node.actions {
-		data[actionType+"_count"] = strconv.FormatUint(action.Count, 10)
-		data[actionType+"_time"] = strconv.FormatUint(action.AccTime, 10)
-		totalCount += action.Count
-		totalTime += action.AccTime
+
+	// Sort action types for consistent display
+	var actionTypes []string
+	for actionType := range node.actions {
+		actionTypes = append(actionTypes, actionType)
 	}
-	data["total_count"] = strconv.FormatUint(totalCount, 10)
-	data["total_time"] = strconv.FormatUint(totalTime, 10)
+	sort.Strings(actionTypes)
+
+	// Display stats for each action type
+	for _, actionType := range actionTypes {
+		action := node.actions[actionType]
+
+		if action.Count > 0 {
+			avgTime := float64(action.AccTime) / float64(action.Count)
+			data[actionType] = fmt.Sprintf("%d operations, %.2f ms avg", action.Count, avgTime/1e6) // Convert nanoseconds to milliseconds
+			totalCount += action.Count
+			totalTime += action.AccTime
+		} else {
+			data[actionType] = "0 operations"
+		}
+	}
+
+	// Add totals if there are multiple action types
+	if len(actionTypes) > 1 {
+		if totalCount > 0 {
+			avgTime := float64(totalTime) / float64(totalCount)
+			data["Total"] = fmt.Sprintf("%d operations, %.2f ms avg", totalCount, avgTime/1e6)
+		} else {
+			data["Total"] = "0 operations"
+		}
+	}
+
 	return data
 }
 
@@ -411,10 +444,7 @@ func (node *ScannerTimedActionsNode) ShouldPauseRefresh() bool {
 	return false
 }
 func (node *ScannerTimedActionsNode) GetChild(name string) (MetricNode, error) {
-	if action, exists := node.actions[name]; exists {
-		return NewScannerTimedActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
-	}
-	return nil, fmt.Errorf("action not found: %s", name)
+	return nil, fmt.Errorf("no children available - actions are displayed as leaf data")
 }
 
 type ScannerTimedActionNode struct {
