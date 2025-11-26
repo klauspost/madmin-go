@@ -872,37 +872,3 @@ func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 }
 
 // Stub implementations for all other metric node types
-
-type OSMetricsNode struct {
-	os     *madmin.OSMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *OSMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *OSMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
-		{Name: "last_minute", Description: "Last minute operation statistics"},
-		{Name: "sensors", Description: "Temperature sensor metrics"},
-	}
-}
-func (node *OSMetricsNode) GetLeafData() map[string]string         { return nil }
-func (node *OSMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
-func (node *OSMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *OSMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *OSMetricsNode) GetPath() string                        { return node.path }
-func (node *OSMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
-
-func (node *OSMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-func (node *OSMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("os metric sub-navigation not yet implemented for: %s", name)
-}
-
-
