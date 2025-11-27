@@ -3,13 +3,10 @@ package mnav
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
 )
-
-//go:generate msgp  -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
 // formatFrequency formats frequency values
 func formatFrequency(freq uint64) string {
@@ -52,36 +49,40 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		return map[string]string{"Error": "CPU metrics not available"}
 	}
 
-	data := map[string]string{}
+	// Use ordered slice to maintain consistent display order
+	var entries []struct{ key, value string }
+	addEntry := func(key, value string) {
+		entries = append(entries, struct{ key, value string }{key, value})
+	}
 
 	// CPU Overview
-	data["CPU OVERVIEW"] = fmt.Sprintf("Collected at %s",
-		node.cpu.CollectedAt.Format("2006-01-02 15:04:05"))
+	addEntry("Overview", fmt.Sprintf("Collected at %s",
+		node.cpu.CollectedAt.Format("2006-01-02 15:04:05")))
 
 	// Cluster Architecture
 	if node.cpu.Nodes > 0 {
-		data["Cluster Architecture"] = fmt.Sprintf("%s nodes, %s total CPUs (%s CPUs/node avg)",
+		addEntry("Cluster Architecture", fmt.Sprintf("%s nodes, %s total CPUs (%s CPUs/node avg)",
 			humanize.Comma(int64(node.cpu.Nodes)),
 			humanize.Comma(int64(node.cpu.CPUCount)),
-			fmt.Sprintf("%.1f", float64(node.cpu.CPUCount)/float64(node.cpu.Nodes)))
+			fmt.Sprintf("%.1f", float64(node.cpu.CPUCount)/float64(node.cpu.Nodes))))
 
 		if node.cpu.TotalCores > 0 {
-			data["Processing Cores"] = fmt.Sprintf("%s total cores (%s cores/node avg, %.1f cores/CPU avg)",
+			addEntry("Processing Cores", fmt.Sprintf("%s total cores (%s cores/node avg, %.1f cores/CPU avg)",
 				humanize.Comma(int64(node.cpu.TotalCores)),
 				fmt.Sprintf("%.1f", float64(node.cpu.TotalCores)/float64(node.cpu.Nodes)),
-				float64(node.cpu.TotalCores)/float64(node.cpu.CPUCount))
+				float64(node.cpu.TotalCores)/float64(node.cpu.CPUCount)))
 		}
 	}
 
 	// Performance Summary
 	if node.cpu.TotalMhz > 0 {
 		totalGhz := node.cpu.TotalMhz / 1000
-		data["Processing Power"] = fmt.Sprintf("%.2f GHz total cluster capacity",
-			totalGhz)
+		addEntry("Processing Power", fmt.Sprintf("%.2f GHz total cluster capacity",
+			totalGhz))
 		if node.cpu.Nodes > 0 {
 			avgGhzPerNode := totalGhz / float64(node.cpu.Nodes)
-			data["Power per Node"] = fmt.Sprintf("%.2f GHz average per node",
-				avgGhzPerNode)
+			addEntry("Power per Node", fmt.Sprintf("%.2f GHz average per node",
+				avgGhzPerNode))
 		}
 	}
 
@@ -90,41 +91,41 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		currentFreq := node.cpu.TotalCurrentFreq / uint64(node.cpu.FreqStatsCount)
 		maxFreq := node.cpu.MaxCPUInfoFreq
 
-		data["FREQUENCY ANALYSIS"] = fmt.Sprintf("%d CPUs monitored for frequency",
-			node.cpu.FreqStatsCount)
+		addEntry("FREQUENCY ANALYSIS", fmt.Sprintf("%d CPUs monitored for frequency",
+			node.cpu.FreqStatsCount))
 
-		data["Current Performance"] = fmt.Sprintf("%s average frequency",
-			formatFrequency(currentFreq))
+		addEntry("Current Performance", fmt.Sprintf("%s average frequency",
+			formatFrequency(currentFreq)))
 
 		if maxFreq > 0 {
 			utilizationPercent := float64(currentFreq) / float64(maxFreq) * 100
-			data["Frequency Utilization"] = fmt.Sprintf("%.1f%% of maximum capability (%s max)",
-				utilizationPercent, formatFrequency(maxFreq))
+			addEntry("Frequency Utilization", fmt.Sprintf("%.1f%% of maximum capability (%s max)",
+				utilizationPercent, formatFrequency(maxFreq)))
 		}
 
 		if node.cpu.MinCPUInfoFreq > 0 && node.cpu.MaxCPUInfoFreq > 0 {
-			data["Frequency Range"] = fmt.Sprintf("%s - %s available range",
+			addEntry("Frequency Range", fmt.Sprintf("%s - %s available range",
 				formatFrequency(node.cpu.MinCPUInfoFreq),
-				formatFrequency(node.cpu.MaxCPUInfoFreq))
+				formatFrequency(node.cpu.MaxCPUInfoFreq)))
 		}
 	}
 
 	// Cache Architecture
 	if node.cpu.TotalCacheSize > 0 {
 		totalCacheGB := float64(node.cpu.TotalCacheSize) / (1024 * 1024 * 1024)
-		data["Cache Architecture"] = fmt.Sprintf("%.2f GB total cache across cluster",
-			totalCacheGB)
+		addEntry("Cache Architecture", fmt.Sprintf("%.2f GB total cache across cluster",
+			totalCacheGB))
 		if node.cpu.Nodes > 0 {
 			avgCacheMB := float64(node.cpu.TotalCacheSize) / (1024 * 1024 * float64(node.cpu.Nodes))
-			data["Cache per Node"] = fmt.Sprintf("%.1f MB average per node",
-				avgCacheMB)
+			addEntry("Cache per Node", fmt.Sprintf("%.1f MB average per node",
+				avgCacheMB))
 		}
 	}
 
 	// Hardware Diversity
 	if len(node.cpu.CPUByModel) > 0 {
-		data["HARDWARE DIVERSITY"] = fmt.Sprintf("%d distinct CPU models deployed",
-			len(node.cpu.CPUByModel))
+		addEntry("CPU Models", fmt.Sprintf("%d distinct CPU models deployed",
+			len(node.cpu.CPUByModel)))
 
 		// Find most common CPU model
 		var mostCommonModel string
@@ -141,15 +142,15 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			if len(modelDisplay) > 50 {
 				modelDisplay = modelDisplay[:47] + "..."
 			}
-			data["Primary CPU Model"] = fmt.Sprintf("%s (%d CPUs, %.1f%%)",
-				modelDisplay, maxCount, percentage)
+			addEntry("Primary CPU Model", fmt.Sprintf("%s (%d CPUs, %.1f%%)",
+				modelDisplay, maxCount, percentage))
 		}
 	}
 
 	// Governor Configuration
 	if len(node.cpu.GovernorFreq) > 0 {
-		data["Power Management"] = fmt.Sprintf("%d frequency governors active",
-			len(node.cpu.GovernorFreq))
+		addEntry("Power Management", fmt.Sprintf("%d frequency governors active",
+			len(node.cpu.GovernorFreq)))
 
 		// Find most common governor
 		var primaryGovernor string
@@ -161,86 +162,70 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			}
 		}
 		if primaryGovernor != "" {
-			data["Primary Governor"] = fmt.Sprintf("%s (%d CPUs)",
-				primaryGovernor, maxCount)
+			addEntry("Primary Governor", fmt.Sprintf("%s (%d CPUs)",
+				primaryGovernor, maxCount))
 		}
 	}
 
-	// System Health Indicators
-	var healthStatus []string
-	if node.cpu.TimesStat != nil {
-		healthStatus = append(healthStatus, "CPU timing metrics")
-	}
-	if node.cpu.LoadStat != nil {
-		healthStatus = append(healthStatus, "load averages")
-	}
-	if node.cpu.FreqStatsCount > 0 {
-		healthStatus = append(healthStatus, "frequency monitoring")
-	}
-	if len(healthStatus) > 0 {
-		data["Monitoring Health"] = strings.Join(healthStatus, ", ")
-	}
-
-	// CPU Times Breakdown
-	if node.cpu.TimesStat != nil {
+	// CPU Times Breakdown - divide by number of nodes to get averages
+	if node.cpu.LoadStatCount > 0 {
 		times := node.cpu.TimesStat
+		nodeCount := float64(node.cpu.LoadStatCount)
 
-		// Calculate total time for percentages
-		totalTime := times.User + times.System + times.Idle + times.Nice +
-			times.Iowait + times.Irq + times.Softirq + times.Steal +
-			times.Guest + times.GuestNice
+		// Average the times across all nodes
+		avgUser := times.User / nodeCount
+		avgSystem := times.System / nodeCount
+		avgIdle := times.Idle / nodeCount
+		avgNice := times.Nice / nodeCount
+		avgIowait := times.Iowait / nodeCount
+		avgIrq := times.Irq / nodeCount
+		avgSoftirq := times.Softirq / nodeCount
+		avgSteal := times.Steal / nodeCount
+		avgGuest := times.Guest / nodeCount
+		avgGuestNice := times.GuestNice / nodeCount
+
+		// Calculate total time for percentages (using averaged values)
+		totalTime := avgUser + avgSystem + avgIdle + avgNice +
+			avgIowait + avgIrq + avgSoftirq + avgSteal +
+			avgGuest + avgGuestNice
 
 		if totalTime > 0 {
-			data["User Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.User/totalTime)*100, times.User)
-			data["System Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.System/totalTime)*100, times.System)
-			data["Idle Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Idle/totalTime)*100, times.Idle)
+			addEntry("User Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgUser/totalTime)*100, avgUser))
+			addEntry("System Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgSystem/totalTime)*100, avgSystem))
+			addEntry("Idle Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgIdle/totalTime)*100, avgIdle))
 
 			// Only show non-zero times to keep display clean
-			if times.Nice > 0 {
-				data["Nice Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Nice/totalTime)*100, times.Nice)
-			}
-			if times.Iowait > 0 {
-				data["IO Wait Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Iowait/totalTime)*100, times.Iowait)
-			}
-			if times.Irq > 0 {
-				data["IRQ Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Irq/totalTime)*100, times.Irq)
-			}
-			if times.Softirq > 0 {
-				data["Soft IRQ Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Softirq/totalTime)*100, times.Softirq)
-			}
-			if times.Steal > 0 {
-				data["Steal Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Steal/totalTime)*100, times.Steal)
-			}
-			if times.Guest > 0 {
-				data["Guest Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.Guest/totalTime)*100, times.Guest)
-			}
-			if times.GuestNice > 0 {
-				data["Guest Nice Time"] = fmt.Sprintf("%.1f%% (%.2fs)", (times.GuestNice/totalTime)*100, times.GuestNice)
-			}
+			addEntry("Nice Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgNice/totalTime)*100, avgNice))
+			addEntry("IO Wait Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgIowait/totalTime)*100, avgIowait))
+			addEntry("IRQ Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgIrq/totalTime)*100, avgIrq))
+			addEntry("Soft IRQ Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgSoftirq/totalTime)*100, avgSoftirq))
+			addEntry("Steal Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgSteal/totalTime)*100, avgSteal))
+			addEntry("Guest Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgGuest/totalTime)*100, avgGuest))
+			addEntry("Guest Nice Time", fmt.Sprintf("%.1f%% (%.2fs avg)", (avgGuestNice/totalTime)*100, avgGuestNice))
 		}
-	}
 
-	// Load Averages
-	if node.cpu.LoadStat != nil {
-		load := node.cpu.LoadStat
-		data["Load 1min"] = fmt.Sprintf("%.2f", load.Load1)
-		data["Load 5min"] = fmt.Sprintf("%.2f", load.Load5)
-		data["Load 15min"] = fmt.Sprintf("%.2f", load.Load15)
+		// Load Averages - divide by number of nodes to get averages
+		if node.cpu.LoadStatCount > 0 {
+			load := node.cpu.LoadStat
+			addEntry("Load 1min", fmt.Sprintf("%.2f avg", load.Load1/float64(node.cpu.LoadStatCount)))
+			addEntry("Load 5min", fmt.Sprintf("%.2f avg", load.Load5/float64(node.cpu.LoadStatCount)))
+			addEntry("Load 15min", fmt.Sprintf("%.2f avg", load.Load15/float64(node.cpu.LoadStatCount)))
+		}
 	}
 
 	// Frequency Information
 	if node.cpu.FreqStatsCount > 0 {
 		currentFreq := node.cpu.TotalCurrentFreq / uint64(node.cpu.FreqStatsCount)
-		data["Current Frequency"] = formatFrequency(currentFreq)
+		addEntry("Current Frequency", formatFrequency(currentFreq))
 
 		if node.cpu.MaxCPUInfoFreq > 0 {
 			utilization := float64(currentFreq) / float64(node.cpu.MaxCPUInfoFreq) * 100
-			data["Frequency Utilization"] = fmt.Sprintf("%.1f%%", utilization)
+			addEntry("Frequency Utilization", fmt.Sprintf("%.1f%%", utilization))
 		}
 
 		if node.cpu.TotalScalingCurrentFreq > 0 {
 			scalingFreq := node.cpu.TotalScalingCurrentFreq / uint64(node.cpu.FreqStatsCount)
-			data["Scaling Frequency"] = formatFrequency(scalingFreq)
+			addEntry("Scaling Frequency", formatFrequency(scalingFreq))
 		}
 	}
 
@@ -276,11 +261,11 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			if len(name) > 40 {
 				name = name[:37] + "..."
 			}
-			data[key] = fmt.Sprintf("%s (%d CPUs, %.1f%%)", name, model.count, percentage)
+			addEntry(key, fmt.Sprintf("%s (%d CPUs, %.1f%%)", name, model.count, percentage))
 		}
 
 		if len(models) > 3 {
-			data["Other Models"] = fmt.Sprintf("%d additional models", len(models)-3)
+			addEntry("Other Models", fmt.Sprintf("%d additional models", len(models)-3))
 		}
 	}
 
@@ -308,7 +293,7 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		for i, gov := range governors {
 			percentage := float64(gov.count) / float64(totalCPUs) * 100
 			key := fmt.Sprintf("Governor %s", gov.name)
-			data[key] = fmt.Sprintf("%d CPUs (%.1f%%)", gov.count, percentage)
+			addEntry(key, fmt.Sprintf("%d CPUs (%.1f%%)", gov.count, percentage))
 
 			if i >= 3 { // Limit to avoid clutter
 				break
@@ -316,6 +301,12 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		}
 	}
 
+	// Convert ordered entries to map with numbered prefixes to preserve order
+	data := make(map[string]string)
+	for i, entry := range entries {
+		key := fmt.Sprintf("%02d:%s", i, entry.key)
+		data[key] = entry.value
+	}
 	return data
 }
 

@@ -8,10 +8,6 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
-//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
-
-//msgp:ignore regex:Node$ regex:Navigator$
-
 // formatMemoryBytes formats bytes in human readable format for memory
 func formatMemoryBytes(bytes uint64) string {
 	return humanize.Bytes(bytes)

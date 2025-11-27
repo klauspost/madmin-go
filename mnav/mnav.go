@@ -90,8 +90,8 @@ type RealtimeMetricsNode struct {
 }
 
 func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
+	// Legacy method - not used in interface, return false for default behavior
+	return false
 }
 
 func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
@@ -344,8 +344,8 @@ type MapNode struct {
 }
 
 func (node *MapNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
+	// Legacy method - not used in interface, return false for default behavior
+	return false
 }
 
 func (node *MapNode) GetChildren() []MetricChild {
@@ -501,8 +501,8 @@ type DiskSetMapNode struct {
 }
 
 func (node *DiskSetMapNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
+	// Legacy method - not used in interface, return false for default behavior
+	return false
 }
 
 func (node *DiskSetMapNode) GetChildren() []MetricChild {

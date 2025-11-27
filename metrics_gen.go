@@ -6,8 +6,6 @@ import (
 	"runtime/metrics"
 	"time"
 
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/load"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -2035,7 +2033,7 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 12 bits */
+	var zb0001Mask uint16 /* 15 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2058,47 +2056,38 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "timesStat":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "TimesStat")
-					return
-				}
-				z.TimesStat = nil
-			} else {
-				if z.TimesStat == nil {
-					z.TimesStat = new(cpu.TimesStat)
-				}
-				err = (*cpuTimesStat)(z.TimesStat).DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "TimesStat")
-					return
-				}
+			err = (*cpuTimesStat)(&z.TimesStat).DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "TimesStat")
+				return
 			}
+		case "timesCount":
+			z.TimesCount, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "TimesCount")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "loadStat":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "LoadStat")
-					return
-				}
-				z.LoadStat = nil
-			} else {
-				if z.LoadStat == nil {
-					z.LoadStat = new(load.AvgStat)
-				}
-				err = (*loadAvgStat)(z.LoadStat).DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "LoadStat")
-					return
-				}
+			err = (*loadAvgStat)(&z.LoadStat).DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadStat")
+				return
 			}
+		case "statCount":
+			z.LoadStatCount, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "LoadStatCount")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "cpuCount":
 			z.CPUCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
+			zb0001Mask |= 0x4
 		case "cpu_by_model":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
@@ -2127,35 +2116,35 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.CPUByModel[za0001] = za0002
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x8
 		case "total_mhz":
 			z.TotalMhz, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalMhz")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x10
 		case "total_cores":
 			z.TotalCores, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCores")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x20
 		case "total_cache_size":
 			z.TotalCacheSize, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCacheSize")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x40
 		case "freq_stats_count":
 			z.FreqStatsCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "FreqStatsCount")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x80
 		case "governor_freq":
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
@@ -2184,49 +2173,49 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.GovernorFreq[za0003] = za0004
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x100
 		case "total_current_freq":
 			z.TotalCurrentFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCurrentFreq")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x200
 		case "total_scaling_current_freq":
 			z.TotalScalingCurrentFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalScalingCurrentFreq")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x400
 		case "min_freq":
 			z.MinCPUInfoFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "MinCPUInfoFreq")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x800
 		case "max_freq":
 			z.MaxCPUInfoFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "MaxCPUInfoFreq")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x1000
 		case "min_scaling_freq":
 			z.MinScalingFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "MinScalingFreq")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x2000
 		case "max_scaling_freq":
 			z.MaxScalingFreq, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "MaxScalingFreq")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x4000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2236,41 +2225,50 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfff {
+	if zb0001Mask != 0x7fff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.CPUByModel = nil
+			z.TimesCount = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.TotalMhz = 0
+			z.LoadStatCount = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.TotalCores = 0
+			z.CPUCount = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.TotalCacheSize = 0
+			z.CPUByModel = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.FreqStatsCount = 0
+			z.TotalMhz = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.GovernorFreq = nil
+			z.TotalCores = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.TotalCurrentFreq = 0
+			z.TotalCacheSize = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.TotalScalingCurrentFreq = 0
+			z.FreqStatsCount = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.MinCPUInfoFreq = 0
+			z.GovernorFreq = nil
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.MaxCPUInfoFreq = 0
+			z.TotalCurrentFreq = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.MinScalingFreq = 0
+			z.TotalScalingCurrentFreq = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
+			z.MinCPUInfoFreq = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MaxCPUInfoFreq = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.MinScalingFreq = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
 			z.MaxScalingFreq = 0
 		}
 	}
@@ -2280,56 +2278,68 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(19)
+	var zb0001Mask uint32 /* 19 bits */
 	_ = zb0001Mask
-	if z.CPUByModel == nil {
+	if z.TimesCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LoadStatCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.TotalMhz == 0 {
+	if z.CPUCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.TotalCores == 0 {
+	if z.CPUByModel == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.TotalCacheSize == 0 {
+	if z.TotalMhz == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.FreqStatsCount == 0 {
+	if z.TotalCores == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.GovernorFreq == nil {
+	if z.TotalCacheSize == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.TotalCurrentFreq == 0 {
+	if z.FreqStatsCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.TotalScalingCurrentFreq == 0 {
+	if z.GovernorFreq == nil {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.MinCPUInfoFreq == 0 {
+	if z.TotalCurrentFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.MaxCPUInfoFreq == 0 {
+	if z.TotalScalingCurrentFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.MinScalingFreq == 0 {
+	if z.MinCPUInfoFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.MaxScalingFreq == 0 {
+	if z.MaxCPUInfoFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.MinScalingFreq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.MaxScalingFreq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -2364,15 +2374,20 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		if z.TimesStat == nil {
-			err = en.WriteNil()
+		err = (*cpuTimesStat)(&z.TimesStat).EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "TimesStat")
+			return
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "timesCount"
+			err = en.Append(0xaa, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 			if err != nil {
 				return
 			}
-		} else {
-			err = (*cpuTimesStat)(z.TimesStat).EncodeMsg(en)
+			err = en.WriteInt(z.TimesCount)
 			if err != nil {
-				err = msgp.WrapError(err, "TimesStat")
+				err = msgp.WrapError(err, "TimesCount")
 				return
 			}
 		}
@@ -2381,29 +2396,36 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		if z.LoadStat == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			err = (*loadAvgStat)(z.LoadStat).EncodeMsg(en)
-			if err != nil {
-				err = msgp.WrapError(err, "LoadStat")
-				return
-			}
-		}
-		// write "cpuCount"
-		err = en.Append(0xa8, 0x63, 0x70, 0x75, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		err = (*loadAvgStat)(&z.LoadStat).EncodeMsg(en)
 		if err != nil {
-			return
-		}
-		err = en.WriteInt(z.CPUCount)
-		if err != nil {
-			err = msgp.WrapError(err, "CPUCount")
+			err = msgp.WrapError(err, "LoadStat")
 			return
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "statCount"
+			err = en.Append(0xa9, 0x73, 0x74, 0x61, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.LoadStatCount)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadStatCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "cpuCount"
+			err = en.Append(0xa8, 0x63, 0x70, 0x75, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.CPUCount)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "cpu_by_model"
 			err = en.Append(0xac, 0x63, 0x70, 0x75, 0x5f, 0x62, 0x79, 0x5f, 0x6d, 0x6f, 0x64, 0x65, 0x6c)
 			if err != nil {
@@ -2427,7 +2449,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "total_mhz"
 			err = en.Append(0xa9, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6d, 0x68, 0x7a)
 			if err != nil {
@@ -2439,7 +2461,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "total_cores"
 			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x6f, 0x72, 0x65, 0x73)
 			if err != nil {
@@ -2451,7 +2473,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "total_cache_size"
 			err = en.Append(0xb0, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x73, 0x69, 0x7a, 0x65)
 			if err != nil {
@@ -2463,7 +2485,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "freq_stats_count"
 			err = en.Append(0xb0, 0x66, 0x72, 0x65, 0x71, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 			if err != nil {
@@ -2475,7 +2497,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "governor_freq"
 			err = en.Append(0xad, 0x67, 0x6f, 0x76, 0x65, 0x72, 0x6e, 0x6f, 0x72, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2499,7 +2521,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "total_current_freq"
 			err = en.Append(0xb2, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2511,7 +2533,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// write "total_scaling_current_freq"
 			err = en.Append(0xba, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2523,7 +2545,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "min_freq"
 			err = en.Append(0xa8, 0x6d, 0x69, 0x6e, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2535,7 +2557,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "max_freq"
 			err = en.Append(0xa8, 0x6d, 0x61, 0x78, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2547,7 +2569,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "min_scaling_freq"
 			err = en.Append(0xb0, 0x6d, 0x69, 0x6e, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2559,7 +2581,7 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "max_scaling_freq"
 			err = en.Append(0xb0, 0x6d, 0x61, 0x78, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			if err != nil {
@@ -2579,56 +2601,68 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(19)
+	var zb0001Mask uint32 /* 19 bits */
 	_ = zb0001Mask
-	if z.CPUByModel == nil {
+	if z.TimesCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LoadStatCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.TotalMhz == 0 {
+	if z.CPUCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.TotalCores == 0 {
+	if z.CPUByModel == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.TotalCacheSize == 0 {
+	if z.TotalMhz == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.FreqStatsCount == 0 {
+	if z.TotalCores == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.GovernorFreq == nil {
+	if z.TotalCacheSize == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.TotalCurrentFreq == 0 {
+	if z.FreqStatsCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.TotalScalingCurrentFreq == 0 {
+	if z.GovernorFreq == nil {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.MinCPUInfoFreq == 0 {
+	if z.TotalCurrentFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.MaxCPUInfoFreq == 0 {
+	if z.TotalScalingCurrentFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.MinScalingFreq == 0 {
+	if z.MinCPUInfoFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.MaxScalingFreq == 0 {
+	if z.MaxCPUInfoFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.MinScalingFreq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.MaxScalingFreq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -2643,30 +2677,34 @@ func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendInt(o, z.Nodes)
 		// string "timesStat"
 		o = append(o, 0xa9, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x53, 0x74, 0x61, 0x74)
-		if z.TimesStat == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o, err = (*cpuTimesStat)(z.TimesStat).MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "TimesStat")
-				return
-			}
+		o, err = (*cpuTimesStat)(&z.TimesStat).MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "TimesStat")
+			return
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "timesCount"
+			o = append(o, 0xaa, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendInt(o, z.TimesCount)
 		}
 		// string "loadStat"
 		o = append(o, 0xa8, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x61, 0x74)
-		if z.LoadStat == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o, err = (*loadAvgStat)(z.LoadStat).MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "LoadStat")
-				return
-			}
+		o, err = (*loadAvgStat)(&z.LoadStat).MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "LoadStat")
+			return
 		}
-		// string "cpuCount"
-		o = append(o, 0xa8, 0x63, 0x70, 0x75, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-		o = msgp.AppendInt(o, z.CPUCount)
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "statCount"
+			o = append(o, 0xa9, 0x73, 0x74, 0x61, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendInt(o, z.LoadStatCount)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "cpuCount"
+			o = append(o, 0xa8, 0x63, 0x70, 0x75, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendInt(o, z.CPUCount)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "cpu_by_model"
 			o = append(o, 0xac, 0x63, 0x70, 0x75, 0x5f, 0x62, 0x79, 0x5f, 0x6d, 0x6f, 0x64, 0x65, 0x6c)
 			o = msgp.AppendMapHeader(o, uint32(len(z.CPUByModel)))
@@ -2675,27 +2713,27 @@ func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendInt(o, za0002)
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "total_mhz"
 			o = append(o, 0xa9, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6d, 0x68, 0x7a)
 			o = msgp.AppendFloat64(o, z.TotalMhz)
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "total_cores"
 			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x6f, 0x72, 0x65, 0x73)
 			o = msgp.AppendInt(o, z.TotalCores)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "total_cache_size"
 			o = append(o, 0xb0, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x73, 0x69, 0x7a, 0x65)
 			o = msgp.AppendInt64(o, z.TotalCacheSize)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "freq_stats_count"
 			o = append(o, 0xb0, 0x66, 0x72, 0x65, 0x71, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 			o = msgp.AppendInt(o, z.FreqStatsCount)
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "governor_freq"
 			o = append(o, 0xad, 0x67, 0x6f, 0x76, 0x65, 0x72, 0x6e, 0x6f, 0x72, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendMapHeader(o, uint32(len(z.GovernorFreq)))
@@ -2704,32 +2742,32 @@ func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendInt(o, za0004)
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "total_current_freq"
 			o = append(o, 0xb2, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.TotalCurrentFreq)
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "total_scaling_current_freq"
 			o = append(o, 0xba, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.TotalScalingCurrentFreq)
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "min_freq"
 			o = append(o, 0xa8, 0x6d, 0x69, 0x6e, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.MinCPUInfoFreq)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "max_freq"
 			o = append(o, 0xa8, 0x6d, 0x61, 0x78, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.MaxCPUInfoFreq)
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "min_scaling_freq"
 			o = append(o, 0xb0, 0x6d, 0x69, 0x6e, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.MinScalingFreq)
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "max_scaling_freq"
 			o = append(o, 0xb0, 0x6d, 0x61, 0x78, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.MaxScalingFreq)
@@ -2748,7 +2786,7 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 12 bits */
+	var zb0001Mask uint16 /* 15 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2771,45 +2809,38 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "timesStat":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.TimesStat = nil
-			} else {
-				if z.TimesStat == nil {
-					z.TimesStat = new(cpu.TimesStat)
-				}
-				bts, err = (*cpuTimesStat)(z.TimesStat).UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "TimesStat")
-					return
-				}
+			bts, err = (*cpuTimesStat)(&z.TimesStat).UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TimesStat")
+				return
 			}
+		case "timesCount":
+			z.TimesCount, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TimesCount")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "loadStat":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.LoadStat = nil
-			} else {
-				if z.LoadStat == nil {
-					z.LoadStat = new(load.AvgStat)
-				}
-				bts, err = (*loadAvgStat)(z.LoadStat).UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "LoadStat")
-					return
-				}
+			bts, err = (*loadAvgStat)(&z.LoadStat).UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadStat")
+				return
 			}
+		case "statCount":
+			z.LoadStatCount, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadStatCount")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "cpuCount":
 			z.CPUCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
+			zb0001Mask |= 0x4
 		case "cpu_by_model":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -2838,35 +2869,35 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.CPUByModel[za0001] = za0002
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x8
 		case "total_mhz":
 			z.TotalMhz, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalMhz")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x10
 		case "total_cores":
 			z.TotalCores, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCores")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x20
 		case "total_cache_size":
 			z.TotalCacheSize, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCacheSize")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x40
 		case "freq_stats_count":
 			z.FreqStatsCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FreqStatsCount")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x80
 		case "governor_freq":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -2895,49 +2926,49 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.GovernorFreq[za0003] = za0004
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x100
 		case "total_current_freq":
 			z.TotalCurrentFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalCurrentFreq")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x200
 		case "total_scaling_current_freq":
 			z.TotalScalingCurrentFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalScalingCurrentFreq")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x400
 		case "min_freq":
 			z.MinCPUInfoFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MinCPUInfoFreq")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x800
 		case "max_freq":
 			z.MaxCPUInfoFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MaxCPUInfoFreq")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x1000
 		case "min_scaling_freq":
 			z.MinScalingFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MinScalingFreq")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x2000
 		case "max_scaling_freq":
 			z.MaxScalingFreq, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MaxScalingFreq")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x4000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2947,41 +2978,50 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfff {
+	if zb0001Mask != 0x7fff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.CPUByModel = nil
+			z.TimesCount = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.TotalMhz = 0
+			z.LoadStatCount = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.TotalCores = 0
+			z.CPUCount = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.TotalCacheSize = 0
+			z.CPUByModel = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.FreqStatsCount = 0
+			z.TotalMhz = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.GovernorFreq = nil
+			z.TotalCores = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.TotalCurrentFreq = 0
+			z.TotalCacheSize = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.TotalScalingCurrentFreq = 0
+			z.FreqStatsCount = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.MinCPUInfoFreq = 0
+			z.GovernorFreq = nil
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.MaxCPUInfoFreq = 0
+			z.TotalCurrentFreq = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.MinScalingFreq = 0
+			z.TotalScalingCurrentFreq = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
+			z.MinCPUInfoFreq = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MaxCPUInfoFreq = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.MinScalingFreq = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
 			z.MaxScalingFreq = 0
 		}
 	}
@@ -2991,19 +3031,7 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CPUMetrics) Msgsize() (s int) {
-	s = 3 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 10
-	if z.TimesStat == nil {
-		s += msgp.NilSize
-	} else {
-		s += (*cpuTimesStat)(z.TimesStat).Msgsize()
-	}
-	s += 9
-	if z.LoadStat == nil {
-		s += msgp.NilSize
-	} else {
-		s += (*loadAvgStat)(z.LoadStat).Msgsize()
-	}
-	s += 9 + msgp.IntSize + 13 + msgp.MapHeaderSize
+	s = 3 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 10 + (*cpuTimesStat)(&z.TimesStat).Msgsize() + 11 + msgp.IntSize + 9 + (*loadAvgStat)(&z.LoadStat).Msgsize() + 10 + msgp.IntSize + 9 + msgp.IntSize + 13 + msgp.MapHeaderSize
 	if z.CPUByModel != nil {
 		for za0001, za0002 := range z.CPUByModel {
 			_ = za0002
@@ -3600,6 +3628,427 @@ func (z *CatalogInfo) Msgsize() (s int) {
 	for za0001 := range z.OutputFiles {
 		s += z.OutputFiles[za0001].Msgsize()
 	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *ClusterAPIStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
+		case "nodes":
+			z.Nodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "errors":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			if cap(z.Errors) >= int(zb0002) {
+				z.Errors = (z.Errors)[:zb0002]
+			} else {
+				z.Errors = make([]string, zb0002)
+			}
+			for za0001 := range z.Errors {
+				z.Errors[za0001], err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Errors", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		case "activeRequests":
+			z.ActiveRequests, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "queuedRequests":
+			z.QueuedRequests, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "lastMinute":
+			err = z.LastMinute.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "LastMinute")
+				return
+			}
+		case "lastDay":
+			err = z.LastDay.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "LastDay")
+				return
+			}
+		case "lastDaySegmented":
+			err = (*Segmented[APIStats, *APIStats])(&z.LastDaySegmented).DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "LastDaySegmented")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Errors = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.ActiveRequests = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.QueuedRequests = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *ClusterAPIStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
+	_ = zb0001Mask
+	if z.Errors == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.ActiveRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.QueuedRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "collected"
+		err = en.Append(0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.CollectedAt)
+		if err != nil {
+			err = msgp.WrapError(err, "CollectedAt")
+			return
+		}
+		// write "nodes"
+		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Nodes)
+		if err != nil {
+			err = msgp.WrapError(err, "Nodes")
+			return
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "errors"
+			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Errors)))
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			for za0001 := range z.Errors {
+				err = en.WriteString(z.Errors[za0001])
+				if err != nil {
+					err = msgp.WrapError(err, "Errors", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "activeRequests"
+			err = en.Append(0xae, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ActiveRequests)
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "queuedRequests"
+			err = en.Append(0xae, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.QueuedRequests)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+		}
+		// write "lastMinute"
+		err = en.Append(0xaa, 0x6c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
+		if err != nil {
+			return
+		}
+		err = z.LastMinute.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "LastMinute")
+			return
+		}
+		// write "lastDay"
+		err = en.Append(0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+		if err != nil {
+			return
+		}
+		err = z.LastDay.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "LastDay")
+			return
+		}
+		// write "lastDaySegmented"
+		err = en.Append(0xb0, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x53, 0x65, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = (*Segmented[APIStats, *APIStats])(&z.LastDaySegmented).EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "LastDaySegmented")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *ClusterAPIStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
+	_ = zb0001Mask
+	if z.Errors == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.ActiveRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.QueuedRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "collected"
+		o = append(o, 0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		o = msgp.AppendTime(o, z.CollectedAt)
+		// string "nodes"
+		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		o = msgp.AppendInt(o, z.Nodes)
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "errors"
+			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Errors)))
+			for za0001 := range z.Errors {
+				o = msgp.AppendString(o, z.Errors[za0001])
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "activeRequests"
+			o = append(o, 0xae, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			o = msgp.AppendInt64(o, z.ActiveRequests)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "queuedRequests"
+			o = append(o, 0xae, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			o = msgp.AppendInt64(o, z.QueuedRequests)
+		}
+		// string "lastMinute"
+		o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
+		o, err = z.LastMinute.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "LastMinute")
+			return
+		}
+		// string "lastDay"
+		o = append(o, 0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+		o, err = z.LastDay.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "LastDay")
+			return
+		}
+		// string "lastDaySegmented"
+		o = append(o, 0xb0, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x53, 0x65, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+		o, err = (*Segmented[APIStats, *APIStats])(&z.LastDaySegmented).MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "LastDaySegmented")
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ClusterAPIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
+		case "nodes":
+			z.Nodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "errors":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			if cap(z.Errors) >= int(zb0002) {
+				z.Errors = (z.Errors)[:zb0002]
+			} else {
+				z.Errors = make([]string, zb0002)
+			}
+			for za0001 := range z.Errors {
+				z.Errors[za0001], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Errors", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		case "activeRequests":
+			z.ActiveRequests, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "queuedRequests":
+			z.QueuedRequests, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "lastMinute":
+			bts, err = z.LastMinute.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastMinute")
+				return
+			}
+		case "lastDay":
+			bts, err = z.LastDay.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastDay")
+				return
+			}
+		case "lastDaySegmented":
+			bts, err = (*Segmented[APIStats, *APIStats])(&z.LastDaySegmented).UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastDaySegmented")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Errors = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.ActiveRequests = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.QueuedRequests = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *ClusterAPIStats) Msgsize() (s int) {
+	s = 1 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 7 + msgp.ArrayHeaderSize
+	for za0001 := range z.Errors {
+		s += msgp.StringPrefixSize + len(z.Errors[za0001])
+	}
+	s += 15 + msgp.Int64Size + 15 + msgp.Int64Size + 11 + z.LastMinute.Msgsize() + 8 + z.LastDay.Msgsize() + 17 + (*Segmented[APIStats, *APIStats])(&z.LastDaySegmented).Msgsize()
 	return
 }
 

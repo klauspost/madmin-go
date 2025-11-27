@@ -105,8 +105,8 @@ type OSMetricsNode struct {
 }
 
 func (node *OSMetricsNode) ShouldPauseUpdates() bool {
-	//TODO implement me
-	panic("implement me")
+	// Legacy method - not used in interface, return false for default behavior
+	return false
 }
 
 func (node *OSMetricsNode) GetChildren() []MetricChild {

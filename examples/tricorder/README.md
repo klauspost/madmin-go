@@ -52,23 +52,7 @@ go run . -endpoint secure.minio.com:9000 -ssl -access-key admin -secret-key secr
 | `-access-key` | `minio` | MinIO access key |
 | `-secret-key` | `minio123` | MinIO secret key |
 | `-ssl` | `false` | Use SSL/TLS connection |
-| `-types` | _all_ | Comma-separated metric types |
 | `-refresh` | `3s` | Auto-refresh interval |
-
-### Available Metric Types
-
-- `scanner` - Object scanning and lifecycle operations
-- `disk` - Disk usage and I/O statistics
-- `cpu` - CPU utilization metrics
-- `mem` - Memory usage statistics
-- `os` - Operating system metrics
-- `net` - Network interface statistics
-- `rpc` - RPC call performance
-- `api` - API operation metrics
-- `process` - Process-level system metrics
-- `runtime` - Go runtime statistics
-- `batch` - Batch job metrics
-- `replication` - Site replication metrics
 
 ## Navigation Controls
 
@@ -83,6 +67,9 @@ go run . -endpoint secure.minio.com:9000 -ssl -access-key admin -secret-key secr
 | `F5` | Refresh current data |
 | `q` / `Ctrl+C` | Quit application |
 
+- Double press `Esc` on the main page to exit.
+- Press a letter to go to the next item starting with that letter
+ 
 ## Navigation Paths
 
 The interface follows a hierarchical path structure:
@@ -180,15 +167,9 @@ The application is structured into several modules:
 
 ### Performance
 
-- Use `-types` to limit metric collection to needed types only
 - Increase `-refresh` interval for slower systems
 - Some metrics may take longer to collect on large clusters
 
-### Navigation Issues
-
-- Use `Esc` to go back if you get lost
-- Press `F5` to refresh if data seems stale
-- Check error messages at the top of the screen
 
 ## License
 

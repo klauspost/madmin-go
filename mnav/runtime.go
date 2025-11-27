@@ -9,10 +9,6 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
-//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
-
-//msgp:ignore regex:Node$ regex:Navigator$
-
 // formatNanosecondsToString formats nanoseconds into human-readable duration
 func formatNanosecondsToString(ns float64) string {
 	if ns == 0 {

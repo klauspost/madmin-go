@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,7 +31,6 @@ type Config struct {
 	AccessKey     string
 	SecretKey     string
 	UseSSL        bool
-	MetricTypes   []string
 	RefreshPeriod time.Duration
 	InputFile     string // Path to import compressed metrics file
 }
@@ -65,7 +63,6 @@ func parseFlags() Config {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s                                    # Connect to default MinIO\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -endpoint prod.example.com:9000    # Custom endpoint\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -types scanner,cpu,mem             # Specific metrics only\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -in metrics_25-11-21-22_31.msgp.zst # Import from file\n", os.Args[0])
 	}
 
@@ -97,51 +94,6 @@ func createAdminClient(cfg Config) (*madmin.AdminClient, error) {
 	}
 
 	return adminClient, nil
-}
-
-func getMetricOptions(cfg Config) madmin.MetricsOptions {
-	var opts madmin.MetricsOptions
-
-	// Convert string types to MetricType
-	if len(cfg.MetricTypes) > 0 {
-		for _, t := range cfg.MetricTypes {
-			switch strings.ToLower(t) {
-			case "scanner":
-				opts.Type |= madmin.MetricsScanner
-			case "disk":
-				opts.Type |= madmin.MetricsDisk
-			case "os":
-				opts.Type |= madmin.MetricsOS
-			case "batch", "batchjobs":
-				opts.Type |= madmin.MetricsBatchJobs
-			case "resync", "siteresync":
-				opts.Type |= madmin.MetricsSiteResync
-			case "net", "network":
-				opts.Type |= madmin.MetricNet
-			case "mem", "memory":
-				opts.Type |= madmin.MetricsMem
-			case "cpu":
-				opts.Type |= madmin.MetricsCPU
-			case "rpc":
-				opts.Type |= madmin.MetricsRPC
-			case "runtime", "go":
-				opts.Type |= madmin.MetricsRuntime
-			case "api":
-				opts.Type |= madmin.MetricsAPI
-			case "replication", "repl":
-				opts.Type |= madmin.MetricsReplication
-			case "process":
-				opts.Type |= madmin.MetricsProcess
-			default:
-				log.Printf("Warning: unknown metric type '%s'", t)
-			}
-		}
-	} else {
-		// Default to all metrics
-		opts.Type = madmin.MetricsAll
-	}
-
-	return opts
 }
 
 func main() {

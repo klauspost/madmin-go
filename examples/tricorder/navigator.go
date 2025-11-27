@@ -297,7 +297,7 @@ func (ns *NavigationState) Refresh() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	opts := getMetricOptions(ns.config)
+	opts := madmin.MetricsOptions{}
 	opts.N = 1
 
 	// Add current node's required metric flags
@@ -309,6 +309,7 @@ func (ns *NavigationState) Refresh() error {
 	node := ns.currentNode
 	for node != nil {
 		opts.Flags |= node.GetMetricFlags()
+		opts.Type |= node.RequiredMetricTypes()
 		node = node.GetParent()
 	}
 	var metrics madmin.RealtimeMetrics
