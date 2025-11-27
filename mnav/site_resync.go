@@ -137,6 +137,12 @@ func (node *SiteResyncMetricsNode) RequiredMetricTypes() madmin.MetricType {
 }
 
 func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
+	// Site resync operations can take a long time to complete
+	// If operation is completed or failed, no need for frequent refresh
+	if node.resync != nil && (node.resync.Complete() || node.resync.ResyncStatus == "failed") {
+		return true
+	}
+	// Keep refreshing while operation is active
 	return false
 }
 

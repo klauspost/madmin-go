@@ -172,10 +172,21 @@ func (ns *NavigationState) NavigateInto() error {
 		return err
 	}
 
-	// Check if new node requires different flags than what we have
+	// Check if new node requires different flags or types than what we have
 	currentFlags := ns.getCurrentMetricFlags()
+	currentTypes := ns.getCurrentMetricTypes()
 	newFlags := childNode.GetMetricFlags()
-	needsRefresh := (newFlags != 0) && (currentFlags&newFlags != newFlags)
+	newTypes := childNode.RequiredMetricTypes()
+
+	needsRefresh := false
+	// Check if we need new flags
+	if (newFlags != 0) && (currentFlags&newFlags != newFlags) {
+		needsRefresh = true
+	}
+	// Check if we need new metric types
+	if (newTypes != 0) && (currentTypes&newTypes != newTypes) {
+		needsRefresh = true
+	}
 
 	// Update navigation state
 	ns.pathHistory = append(ns.pathHistory, ns.currentPath)
@@ -473,4 +484,12 @@ func (ns *NavigationState) getCurrentMetricFlags() madmin.MetricFlags {
 		return ns.currentNode.GetMetricFlags()
 	}
 	return 0
+}
+
+// getCurrentMetricTypes returns the metric types currently being collected
+func (ns *NavigationState) getCurrentMetricTypes() madmin.MetricType {
+	// For now, assume we have basic types available (API, RPC, etc.)
+	// In practice, this would be tracked more precisely based on the last refresh
+	// Since we're checking if NEW types are needed, this is a conservative estimate
+	return madmin.MetricsAPI | madmin.MetricsRPC | madmin.MetricsDisk | madmin.MetricsScanner
 }

@@ -2,7 +2,9 @@ package mnav
 
 import (
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -94,14 +96,25 @@ func (node *APILastMinuteNode) GetChildren() []MetricChild {
 		}
 		lastMinute := node.api.LastMinuteAPI[endpoint]
 		avgLatency := float64(0)
+		var sz string
 		if lastMinute.Requests > 0 {
 			avgLatency = (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
+			inout := []string{""}
+			if lastMinute.IncomingBytes > 0 {
+				inout = append(inout, "in: "+humanize.Bytes(uint64(lastMinute.IncomingBytes)))
+			}
+			if lastMinute.OutgoingBytes > 0 {
+				inout = append(inout, "out: "+humanize.Bytes(uint64(lastMinute.OutgoingBytes)))
+			}
+			if len(inout) > 1 {
+				sz = strings.Join(inout, ", ")
+			}
 		}
 
 		children = append(children, MetricChild{
 			Name: endpoint,
-			Description: fmt.Sprintf("Last Minute: %s req (%.1fms avg)",
-				humanize.Comma(lastMinute.Requests), avgLatency),
+			Description: fmt.Sprintf("%s req (%.1fms avg%s)",
+				humanize.Comma(lastMinute.Requests), avgLatency, sz),
 		})
 	}
 	return children
@@ -248,14 +261,19 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 			endpointList = append(endpointList, endpointStat{name, stat})
 		}
 
-		// Sort by request count
-		for i := 0; i < len(endpointList)-1; i++ {
-			for j := i + 1; j < len(endpointList); j++ {
-				if endpointList[i].stats.Requests < endpointList[j].stats.Requests {
-					endpointList[i], endpointList[j] = endpointList[j], endpointList[i]
-				}
+		// Sort by request count, name second.
+		slices.SortFunc(endpointList, func(a, b endpointStat) int {
+			if a.stats.Requests > b.stats.Requests {
+				return -1
 			}
-		}
+			if a.stats.Requests < b.stats.Requests {
+				return 1
+			}
+			if a.name < b.name {
+				return -1
+			}
+			return 1
+		})
 
 		maxShow := 5
 		if len(endpointList) < maxShow {
@@ -269,7 +287,8 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 				if ep.stats.Requests > 0 {
 					avgLatency := (ep.stats.RequestTimeSecs / float64(ep.stats.Requests)) * 1000
 					errors := ep.stats.Errors4xx + ep.stats.Errors5xx
-					entries = append(entries, struct{ key, value string }{fmt.Sprintf("↳ %s", ep.name), fmt.Sprintf("%s req, %.1fms avg, %d err",
+					epName := ep.name[:min(len(ep.name), 15)]
+					entries = append(entries, struct{ key, value string }{fmt.Sprintf("* %s", epName), fmt.Sprintf("%s req, %.1fms avg, %d err",
 						humanize.Comma(ep.stats.Requests), avgLatency, errors)})
 				}
 			}

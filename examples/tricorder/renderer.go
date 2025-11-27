@@ -352,14 +352,30 @@ func (r *Renderer) renderLeafData(nav *NavigationState) string {
 			displayKey = key[colonIndex+1:]
 		}
 
+		// Trim whitespace from key
+		displayKey = strings.TrimSpace(displayKey)
+
 		// Skip empty keys (like separators)
-		if strings.TrimSpace(displayKey) == "" {
+		if displayKey == "" {
 			continue
 		}
 
 		formattedValue := r.formatValue(displayKey, value)
 
-		line := fmt.Sprintf("%s %s",
+		// Trim key and value to fit available width
+		maxKeyWidth := 25  // Reserve space for key
+		maxValueWidth := r.width - maxKeyWidth - 10  // Reserve space for value and padding
+
+		if len(displayKey) > maxKeyWidth {
+			displayKey = displayKey[:maxKeyWidth-3] + "..."
+		}
+
+		if len(formattedValue) > maxValueWidth && maxValueWidth > 0 {
+			formattedValue = formattedValue[:maxValueWidth-3] + "..."
+		}
+
+		line := fmt.Sprintf("%-*s %s",
+			maxKeyWidth,
 			keyStyle.Render(displayKey),
 			valueStyle.Render(formattedValue))
 

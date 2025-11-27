@@ -150,6 +150,7 @@ func (node *BatchJobMetricsNode) RequiredMetricTypes() madmin.MetricType {
 }
 
 func (node *BatchJobMetricsNode) ShouldPauseRefresh() bool {
+	// Batch job overview should refresh to show new jobs and status changes
 	return false
 }
 
@@ -270,6 +271,11 @@ func (node *BatchJobNode) RequiredMetricTypes() madmin.MetricType {
 }
 
 func (node *BatchJobNode) ShouldPauseRefresh() bool {
+	// Individual job details - if job is completed or failed, no need for frequent refresh
+	if node.job != nil && (node.job.Complete || node.job.Failed) {
+		return true
+	}
+	// Keep refreshing while job is running
 	return false
 }
 
