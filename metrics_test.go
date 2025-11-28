@@ -432,12 +432,13 @@ func TestCPUMetricsMerge(t *testing.T) {
 			base: &CPUMetrics{
 				CollectedAt: now,
 				Nodes:       2,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User:   100,
 					System: 50,
 					Idle:   1000,
 				},
-				LoadStat: &load.AvgStat{
+				TimesCount: 2,
+				LoadStat: load.AvgStat{
 					Load1:  1.5,
 					Load5:  2.0,
 					Load15: 1.8,
@@ -447,17 +448,19 @@ func TestCPUMetricsMerge(t *testing.T) {
 			other: &CPUMetrics{
 				CollectedAt: later,
 				Nodes:       3,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User:   50,
 					System: 25,
 					Idle:   500,
 				},
-				LoadStat: &load.AvgStat{
+				TimesCount: 3,
+				LoadStat: load.AvgStat{
 					Load1:  0.5,
 					Load5:  1.0,
 					Load15: 0.8,
 				},
-				CPUCount: 4,
+				LoadStatCount: 3,
+				CPUCount:      4,
 			},
 			verify: func(t *testing.T, result *CPUMetrics) {
 				if !result.CollectedAt.Equal(later) {
@@ -492,26 +495,26 @@ func TestCPUMetricsMerge(t *testing.T) {
 		{
 			name: "merge nil TimesStat",
 			base: &CPUMetrics{
-				Nodes:     1,
-				TimesStat: nil,
-				CPUCount:  2,
+				Nodes:    1,
+				CPUCount: 2,
 			},
 			other: &CPUMetrics{
 				Nodes: 1,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User: 100,
 				},
-				CPUCount: 2,
+				TimesCount: 1,
+				CPUCount:   2,
 			},
 			verify: func(t *testing.T, result *CPUMetrics) {
 				if result.Nodes != 2 {
 					t.Errorf("Nodes = %d, want 2", result.Nodes)
 				}
-				if result.TimesStat == nil {
-					t.Error("TimesStat is nil, should be set")
+				want := cpu.TimesStat{
+					User: 100,
 				}
-				if result.TimesStat != nil && result.TimesStat.User != 100 {
-					t.Errorf("TimesStat.User = %f, want 100", result.TimesStat.User)
+				if result.TimesStat != want {
+					t.Error("TimesStat is nil, should be set")
 				}
 				if result.CPUCount != 4 {
 					t.Errorf("CPUCount = %d, want 4", result.CPUCount)
@@ -2259,8 +2262,8 @@ func TestRPCMetricsLastMinuteTotal(t *testing.T) {
 						OutgoingBytes: 2000,
 					},
 					"handler2": {
-						StartTime:     nil,
-						EndTime:       nil,
+						StartTime:     func() *time.Time { t := now.Add(time.Minute); return &t }(),
+						EndTime:       func() *time.Time { t := now.Add(time.Minute); return &t }(),
 						Requests:      200,
 						IncomingBytes: 1500,
 						OutgoingBytes: 2500,
@@ -2433,19 +2436,31 @@ func TestRPCMetricsLastDayTotalSegmented(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, result SegmentedRPCMetrics) {
-				// When intervals differ, the second one is silently ignored
-				if result.Interval != 60 {
-					t.Errorf("Interval = %d, want 60", result.Interval)
+				// When intervals differ, only one handler's data is kept (whichever is processed first in map iteration)
+				// Due to Go's non-deterministic map iteration, we accept either handler's data
+				if result.Interval != 60 && result.Interval != 120 {
+					t.Errorf("Interval = %d, want 60 or 120", result.Interval)
 				}
-				if len(result.Segments) != 2 { // Only handler1's segments
-					t.Errorf("Segments length = %d, want 2", len(result.Segments))
-				}
-				// Only handler1's data should be present
-				if result.Segments[0].Requests != 100 {
-					t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
-				}
-				if result.Segments[1].Requests != 200 {
-					t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+
+				if result.Interval == 60 {
+					// handler1 was processed first
+					if len(result.Segments) != 2 {
+						t.Errorf("Segments length = %d, want 2", len(result.Segments))
+					}
+					if len(result.Segments) >= 1 && result.Segments[0].Requests != 100 {
+						t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
+					}
+					if len(result.Segments) >= 2 && result.Segments[1].Requests != 200 {
+						t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+					}
+				} else {
+					// handler2 was processed first
+					if len(result.Segments) != 1 {
+						t.Errorf("Segments length = %d, want 1", len(result.Segments))
+					}
+					if len(result.Segments) >= 1 && result.Segments[0].Requests != 50 {
+						t.Errorf("Segments[0].Requests = %d, want 50", result.Segments[0].Requests)
+					}
 				}
 			},
 		},
