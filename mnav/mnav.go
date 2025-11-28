@@ -391,10 +391,11 @@ func (node *MapNode) GetChildren() []MetricChild {
 				childName = url.PathEscape(k)
 				// Keep original name for display
 			}
+			disk := data[k]
 			children = append(children, MetricChild{
 				Name:        childName,
 				DisplayName: displayName,
-				Description: fmt.Sprintf("Disk metrics for %s", k),
+				Description: fmt.Sprintf("%d queued; r:%d w:%d d:%d f:%d IO per minute", disk.IOStatsMinute.CurrentIOs, disk.IOStatsMinute.ReadIOs, disk.IOStatsMinute.WriteIOs, disk.IOStatsMinute.DiscardIOs, disk.IOStatsMinute.FlushIOs),
 			})
 		}
 		return children

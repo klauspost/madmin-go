@@ -108,9 +108,9 @@ func (node *RPCLastMinuteNode) GetLeafData() map[string]string {
 		// Average time
 		if stats.Requests > 0 && stats.RequestTimeSecs > 0 {
 			avgLatency := (stats.RequestTimeSecs / float64(stats.Requests)) * 1000
-			parts = append(parts, fmt.Sprintf("avg time: %.2fms", avgLatency))
+			parts = append(parts, fmt.Sprintf("avg: %.2fms", avgLatency))
 		} else {
-			parts = append(parts, "avg time: 0ms")
+			parts = append(parts, "avg: 0ms")
 		}
 
 		// RPS (requests per second)

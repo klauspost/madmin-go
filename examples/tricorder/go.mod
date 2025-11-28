@@ -1,11 +1,13 @@
 module tricorder
 
-go 1.24.2
+go 1.25
 
 require (
 	github.com/charmbracelet/bubbletea v0.27.1
 	github.com/charmbracelet/lipgloss v0.13.1
+	github.com/klauspost/compress v1.18.1
 	github.com/minio/madmin-go/v4 v4.0.0
+	github.com/tinylib/msgp v1.5.1-0.20251121092214-00e7bb00a452
 )
 
 replace github.com/minio/madmin-go/v4 => ../..
@@ -23,7 +25,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
@@ -50,7 +51,6 @@ require (
 	github.com/safchain/ethtool v0.6.1 // indirect
 	github.com/secure-io/sio-go v0.3.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
-	github.com/tinylib/msgp v1.5.1-0.20251121092214-00e7bb00a452 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
