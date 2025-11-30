@@ -17,6 +17,10 @@ type RPCMetricsNode struct {
 	path   string
 }
 
+func (node *RPCMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCMetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
 		{Name: "last_minute", Description: "Last minute RPC statistics by handler"},
@@ -37,6 +41,10 @@ func (node *RPCMetricsNode) GetPath() string                    { return node.pa
 func (node *RPCMetricsNode) ShouldPauseRefresh() bool           { return false }
 
 func (node *RPCMetricsNode) GetChild(name string) (MetricNode, error) {
+	if node.rpc == nil {
+		return nil, fmt.Errorf("no RPC data available")
+	}
+
 	switch name {
 	case "last_minute":
 		return &RPCLastMinuteNode{
@@ -72,6 +80,10 @@ type RPCLastMinuteNode struct {
 	rpc    *madmin.RPCMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *RPCLastMinuteNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCLastMinuteNode) ShouldPauseRefresh() bool { return false }
@@ -157,6 +169,10 @@ type RPCLastDayNode struct {
 	path   string
 }
 
+func (node *RPCLastDayNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCLastDayNode) ShouldPauseRefresh() bool { return true }
 
 func (node *RPCLastDayNode) GetChildren() []MetricChild {
@@ -201,7 +217,7 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 }
 
 func (node *RPCLastDayNode) GetLeafData() map[string]string {
-	if len(node.rpc.LastDay) == 0 {
+	if node.rpc == nil || len(node.rpc.LastDay) == 0 {
 		return map[string]string{"Status": "No last day RPC data available"}
 	}
 
@@ -250,6 +266,10 @@ type RPCLastDayAllNode struct {
 	rpc    *madmin.RPCMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *RPCLastDayAllNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCLastDayAllNode) ShouldPauseRefresh() bool { return true }
@@ -355,6 +375,10 @@ func (node *RPCLastDayAllNode) calculateAllTimeSegments() []timeSegmentInfo {
 }
 
 func (node *RPCLastDayAllNode) GetLeafData() map[string]string {
+	if node.rpc == nil || len(node.rpc.LastDay) == 0 {
+		return map[string]string{"Status": "No last day RPC data available"}
+	}
+
 	// Calculate total across all handlers and segments
 	var totalStats madmin.RPCStats
 	for _, segmented := range node.rpc.LastDay {
@@ -424,10 +448,18 @@ type RPCLastDayTotalNode struct {
 	path   string
 }
 
+func (node *RPCLastDayTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCLastDayTotalNode) ShouldPauseRefresh() bool   { return true }
 func (node *RPCLastDayTotalNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *RPCLastDayTotalNode) GetLeafData() map[string]string {
+	if node.rpc == nil || len(node.rpc.LastDay) == 0 {
+		return map[string]string{"Status": "No last day RPC data available"}
+	}
+
 	var totalStats madmin.RPCStats
 	for _, segmented := range node.rpc.LastDay {
 		for _, segment := range segmented.Segments {
@@ -453,6 +485,10 @@ type RPCTimeSegmentAllNode struct {
 	path        string
 }
 
+func (node *RPCTimeSegmentAllNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCTimeSegmentAllNode) ShouldPauseRefresh() bool   { return true }
 func (node *RPCTimeSegmentAllNode) GetChildren() []MetricChild { return []MetricChild{} }
 
@@ -475,6 +511,10 @@ type RPCLastDayHandlerNode struct {
 	segmented   madmin.SegmentedRPCMetrics
 	parent      MetricNode
 	path        string
+}
+
+func (node *RPCLastDayHandlerNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCLastDayHandlerNode) ShouldPauseRefresh() bool { return true }
@@ -579,6 +619,10 @@ type RPCConnectionsNode struct {
 	path   string
 }
 
+func (node *RPCConnectionsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCConnectionsNode) ShouldPauseRefresh() bool { return false }
 
 func (node *RPCConnectionsNode) GetChildren() []MetricChild {
@@ -594,6 +638,10 @@ func (node *RPCConnectionsNode) GetChildren() []MetricChild {
 }
 
 func (node *RPCConnectionsNode) GetLeafData() map[string]string {
+	if node.rpc == nil {
+		return map[string]string{"Status": "No RPC connection data available"}
+	}
+
 	data := make(map[string]string)
 
 	data["Total Nodes"] = fmt.Sprintf("%d", node.rpc.Nodes)
@@ -635,10 +683,18 @@ type RPCConnectionSummaryNode struct {
 	path   string
 }
 
+func (node *RPCConnectionSummaryNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCConnectionSummaryNode) ShouldPauseRefresh() bool   { return false }
 func (node *RPCConnectionSummaryNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *RPCConnectionSummaryNode) GetLeafData() map[string]string {
+	if node.rpc == nil {
+		return map[string]string{"Status": "No RPC connection data available"}
+	}
+
 	data := make(map[string]string)
 
 	data["Cluster Nodes"] = fmt.Sprintf("%d nodes configured", node.rpc.Nodes)
@@ -678,6 +734,10 @@ type RPCByDestinationNode struct {
 	rpc    *madmin.RPCMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *RPCByDestinationNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCByDestinationNode) ShouldPauseRefresh() bool { return false }
@@ -793,6 +853,10 @@ type RPCByCallerNode struct {
 	rpc    *madmin.RPCMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *RPCByCallerNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCByCallerNode) ShouldPauseRefresh() bool { return false }
@@ -911,6 +975,10 @@ type RPCDestinationNode struct {
 	path        string
 }
 
+func (node *RPCDestinationNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCDestinationNode) ShouldPauseRefresh() bool   { return true }
 func (node *RPCDestinationNode) GetChildren() []MetricChild { return []MetricChild{} }
 
@@ -982,6 +1050,10 @@ type RPCCallerNode struct {
 	path   string
 }
 
+func (node *RPCCallerNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCCallerNode) ShouldPauseRefresh() bool   { return true }
 func (node *RPCCallerNode) GetChildren() []MetricChild { return []MetricChild{} }
 
@@ -1051,6 +1123,10 @@ type RPCHandlerNode struct {
 	path    string
 }
 
+func (node *RPCHandlerNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RPCHandlerNode) ShouldPauseRefresh() bool   { return true }
 func (node *RPCHandlerNode) GetChildren() []MetricChild { return []MetricChild{} }
 
@@ -1073,6 +1149,10 @@ type RPCHandlerTotalNode struct {
 	parent    MetricNode
 	path      string
 	timeRange string
+}
+
+func (node *RPCHandlerTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCHandlerTotalNode) ShouldPauseRefresh() bool   { return true }
@@ -1100,6 +1180,10 @@ type RPCHandlerSegmentNode struct {
 	segmentTime time.Time
 	parent      MetricNode
 	path        string
+}
+
+func (node *RPCHandlerSegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *RPCHandlerSegmentNode) ShouldPauseRefresh() bool   { return true }
@@ -1201,6 +1285,11 @@ func generateRPCStatsDisplay(stats madmin.RPCStats, handlerCount int, showHandle
 // Helper function to generate RPC overview dashboard
 func (node *RPCMetricsNode) generateRPCOverviewDashboard() map[string]string {
 	data := make(map[string]string)
+
+	// Check if RPC data is available
+	if node.rpc == nil {
+		return map[string]string{"Status": "No RPC metrics available"}
+	}
 
 	// Collection timestamp
 	data["Last Updated"] = node.rpc.CollectedAt.Format("2006-01-02 15:04:05")

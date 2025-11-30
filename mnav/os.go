@@ -26,6 +26,10 @@ type OSMetricsNavigator struct {
 	path   string
 }
 
+func (node *OSMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 // NewOSMetricsNavigator creates a new OS metrics navigator
 func NewOSMetricsNavigator(os *madmin.OSMetrics, parent MetricNode, path string) *OSMetricsNavigator {
 	return &OSMetricsNavigator{os: os, parent: parent, path: path}
@@ -100,6 +104,10 @@ type OSMetricsNode struct {
 	path   string
 }
 
+func (node *OSMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *OSMetricsNode) ShouldPauseUpdates() bool {
 	// Legacy method - not used in interface, return false for default behavior
 	return false
@@ -131,6 +139,10 @@ type OSLifetimeOpsNode struct {
 	ops    map[string]uint64
 	parent MetricNode
 	path   string
+}
+
+func (node *OSLifetimeOpsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewOSLifetimeOpsNode(ops map[string]uint64, parent MetricNode, path string) *OSLifetimeOpsNode {
@@ -178,6 +190,10 @@ type OSLastMinuteNode struct {
 	operations map[string]madmin.TimedAction
 	parent     MetricNode
 	path       string
+}
+
+func (node *OSLastMinuteNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewOSLastMinuteNode(operations map[string]madmin.TimedAction, parent MetricNode, path string) *OSLastMinuteNode {
@@ -253,6 +269,10 @@ type OSSensorsNode struct {
 	sensors map[string]madmin.SensorMetrics
 	parent  MetricNode
 	path    string
+}
+
+func (node *OSSensorsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewOSSensorsNode(sensors map[string]madmin.SensorMetrics, parent MetricNode, path string) *OSSensorsNode {

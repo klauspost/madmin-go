@@ -176,6 +176,10 @@ type ReplicationMetricsNode struct {
 	path        string
 }
 
+func (node *ReplicationMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewReplicationMetricsNode(replication *madmin.ReplicationMetrics, parent MetricNode, path string) *ReplicationMetricsNode {
 	return &ReplicationMetricsNode{replication: replication, parent: parent, path: path}
 }
@@ -311,6 +315,10 @@ type ReplicationLastHourNode struct {
 	path        string
 }
 
+func (node *ReplicationLastHourNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewReplicationLastHourNode(replication *madmin.ReplicationMetrics, parent MetricNode, path string) *ReplicationLastHourNode {
 	return &ReplicationLastHourNode{replication: replication, parent: parent, path: path}
 }
@@ -359,6 +367,10 @@ type ReplicationTargetNode struct {
 	target     *madmin.ReplicationTargetStats
 	parent     MetricNode
 	path       string
+}
+
+func (node *ReplicationTargetNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewReplicationTargetNode(targetName string, target *madmin.ReplicationTargetStats, parent MetricNode, path string) *ReplicationTargetNode {
@@ -459,6 +471,10 @@ type ReplicationTargetLastHourNode struct {
 	path       string
 }
 
+func (node *ReplicationTargetLastHourNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewReplicationTargetLastHourNode(targetName string, target *madmin.ReplicationTargetStats, parent MetricNode, path string) *ReplicationTargetLastHourNode {
 	return &ReplicationTargetLastHourNode{targetName: targetName, target: target, parent: parent, path: path}
 }
@@ -501,6 +517,10 @@ type ReplicationSinceStartNode struct {
 	path       string
 }
 
+func (node *ReplicationSinceStartNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewReplicationSinceStartNode(targetName string, target *madmin.ReplicationTargetStats, parent MetricNode, path string) *ReplicationSinceStartNode {
 	return &ReplicationSinceStartNode{targetName: targetName, target: target, parent: parent, path: path}
 }
@@ -541,6 +561,10 @@ type ReplicationLastDayNode struct {
 	segmented  *madmin.SegmentedReplicationStats
 	parent     MetricNode
 	path       string
+}
+
+func (node *ReplicationLastDayNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewReplicationLastDayNode(targetName string, segmented *madmin.SegmentedReplicationStats, parent MetricNode, path string) *ReplicationLastDayNode {
@@ -673,6 +697,10 @@ type ReplicationLastDayTotalNode struct {
 	path       string
 }
 
+func (node *ReplicationLastDayTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *ReplicationLastDayTotalNode) ShouldPauseRefresh() bool {
 	return true
 }
@@ -711,6 +739,10 @@ type ReplicationTimeSegmentNode struct {
 	interval    int
 	parent      MetricNode
 	path        string
+}
+
+func (node *ReplicationTimeSegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *ReplicationTimeSegmentNode) ShouldPauseRefresh() bool {
@@ -753,6 +785,10 @@ type ReplicationLastDayAggregatedNode struct {
 	replication *madmin.ReplicationMetrics
 	parent      MetricNode
 	path        string
+}
+
+func (node *ReplicationLastDayAggregatedNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewReplicationLastDayAggregatedNode(replication *madmin.ReplicationMetrics, parent MetricNode, path string) *ReplicationLastDayAggregatedNode {

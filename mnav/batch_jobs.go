@@ -18,6 +18,10 @@ type BatchJobMetricsNode struct {
 	path   string
 }
 
+func (node *BatchJobMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewBatchJobMetricsNode(batch *madmin.BatchJobMetrics, parent MetricNode, path string) *BatchJobMetricsNode {
 	return &BatchJobMetricsNode{
 		batch:  batch,
@@ -168,6 +172,10 @@ type BatchJobNode struct {
 	job    *madmin.JobMetric
 	parent MetricNode
 	path   string
+}
+
+func (node *BatchJobNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewBatchJobNode(job *madmin.JobMetric, parent MetricNode, path string) *BatchJobNode {

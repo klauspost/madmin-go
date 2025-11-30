@@ -15,6 +15,10 @@ type ProcessMetricsNode struct {
 	path    string
 }
 
+func (node *ProcessMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewProcessMetricsNode(process *madmin.ProcessMetrics, parent MetricNode, path string) *ProcessMetricsNode {
 	return &ProcessMetricsNode{process: process, parent: parent, path: path}
 }
@@ -134,6 +138,10 @@ type ProcessCPUTimesNode struct {
 	path     string
 }
 
+func (node *ProcessCPUTimesNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewProcessCPUTimesNode(cpuTimes *madmin.ProcessCPUTimes, parent MetricNode, path string) *ProcessCPUTimesNode {
 	return &ProcessCPUTimesNode{cpuTimes: cpuTimes, parent: parent, path: path}
 }
@@ -223,6 +231,10 @@ type ProcessMemoryInfoNode struct {
 	path    string
 }
 
+func (node *ProcessMemoryInfoNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewProcessMemoryInfoNode(memInfo *madmin.ProcessMemoryInfo, parent MetricNode, path string) *ProcessMemoryInfoNode {
 	return &ProcessMemoryInfoNode{memInfo: memInfo, parent: parent, path: path}
 }
@@ -295,6 +307,10 @@ type ProcessIOCountersNode struct {
 	path       string
 }
 
+func (node *ProcessIOCountersNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewProcessIOCountersNode(ioCounters *madmin.ProcessIOCounters, parent MetricNode, path string) *ProcessIOCountersNode {
 	return &ProcessIOCountersNode{ioCounters: ioCounters, parent: parent, path: path}
 }
@@ -365,6 +381,10 @@ type ProcessCtxSwitchesNode struct {
 	path        string
 }
 
+func (node *ProcessCtxSwitchesNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewProcessCtxSwitchesNode(ctxSwitches *madmin.ProcessCtxSwitches, parent MetricNode, path string) *ProcessCtxSwitchesNode {
 	return &ProcessCtxSwitchesNode{ctxSwitches: ctxSwitches, parent: parent, path: path}
 }
@@ -425,6 +445,10 @@ type ProcessPageFaultsNode struct {
 	pageFaults *madmin.ProcessPageFaults
 	parent     MetricNode `msg:"-"`
 	path       string
+}
+
+func (node *ProcessPageFaultsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewProcessPageFaultsNode(pageFaults *madmin.ProcessPageFaults, parent MetricNode, path string) *ProcessPageFaultsNode {
@@ -500,6 +524,10 @@ type ProcessMemoryMapsNode struct {
 	memMaps *madmin.ProcessMemoryMaps
 	parent  MetricNode `msg:"-"`
 	path    string
+}
+
+func (node *ProcessMemoryMapsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewProcessMemoryMapsNode(memMaps *madmin.ProcessMemoryMaps, parent MetricNode, path string) *ProcessMemoryMapsNode {

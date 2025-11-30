@@ -31,6 +31,10 @@ type CPUMetricsNavigator struct {
 	path   string
 }
 
+func (node *CPUMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *CPUMetricsNavigator) ShouldPauseRefresh() bool {
 	return false
 }

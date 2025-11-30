@@ -17,6 +17,10 @@ type ScannerMetricsNode struct {
 	path    string
 }
 
+func (node *ScannerMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 // NewScannerMetricsNode creates a new ScannerMetricsNode
 func NewScannerMetricsNode(scanner *madmin.ScannerMetrics, parent MetricNode, path string) *ScannerMetricsNode {
 	return &ScannerMetricsNode{
@@ -37,6 +41,10 @@ func (node *ScannerMetricsNode) GetChildren() []MetricChild {
 }
 
 func (node *ScannerMetricsNode) GetLeafData() map[string]string {
+	if node.scanner == nil {
+		return map[string]string{"Status": "No scanner metrics available"}
+	}
+
 	data := map[string]string{}
 
 	// Scanning Overview
@@ -147,6 +155,10 @@ func (node *ScannerMetricsNode) ShouldPauseRefresh() bool {
 }
 
 func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
+	if node.scanner == nil {
+		return nil, fmt.Errorf("no scanner data available")
+	}
+
 	switch name {
 	case "lifetime_ops":
 		return NewScannerLifetimeOpsNode(node.scanner.LifeTimeOps, node, fmt.Sprintf("%s/lifetime_ops", node.path)), nil
@@ -169,6 +181,10 @@ type ScannerLifetimeOpsNode struct {
 	ops    map[string]uint64
 	parent MetricNode
 	path   string
+}
+
+func (node *ScannerLifetimeOpsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewScannerLifetimeOpsNode(ops map[string]uint64, parent MetricNode, path string) *ScannerLifetimeOpsNode {
@@ -228,6 +244,10 @@ type ScannerLifetimeILMNode struct {
 	path   string
 }
 
+func (node *ScannerLifetimeILMNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewScannerLifetimeILMNode(ilm map[string]uint64, parent MetricNode, path string) *ScannerLifetimeILMNode {
 	return &ScannerLifetimeILMNode{ilm: ilm, parent: parent, path: path}
 }
@@ -281,6 +301,10 @@ type ScannerLastMinuteNode struct {
 	}
 	parent MetricNode
 	path   string
+}
+
+func (node *ScannerLastMinuteNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewScannerLastMinuteNode(lastMinute *struct {
@@ -367,6 +391,10 @@ type ScannerTimedActionsNode struct {
 	path    string
 }
 
+func (node *ScannerTimedActionsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewScannerTimedActionsNode(actions map[string]madmin.TimedAction, parent MetricNode, path string) *ScannerTimedActionsNode {
 	return &ScannerTimedActionsNode{actions: actions, parent: parent, path: path}
 }
@@ -439,6 +467,10 @@ type ScannerTimedActionNode struct {
 	path       string
 }
 
+func (node *ScannerTimedActionNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewScannerTimedActionNode(actionType string, action *madmin.TimedAction, parent MetricNode, path string) *ScannerTimedActionNode {
 	return &ScannerTimedActionNode{actionType: actionType, action: action, parent: parent, path: path}
 }
@@ -473,6 +505,10 @@ type ScannerPathsNode struct {
 	path     string
 }
 
+func (node *ScannerPathsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewScannerPathsNode(paths []string, pathType string, parent MetricNode, path string) *ScannerPathsNode {
 	return &ScannerPathsNode{paths: paths, pathType: pathType, parent: parent, path: path}
 }
@@ -505,6 +541,10 @@ type ScannerOpCountNode struct {
 	count  uint64
 	parent MetricNode
 	path   string
+}
+
+func (node *ScannerOpCountNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewScannerOpCountNode(opType string, count uint64, parent MetricNode, path string) *ScannerOpCountNode {

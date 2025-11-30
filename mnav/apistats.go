@@ -19,6 +19,10 @@ type APIMetricsNode struct {
 	path   string
 }
 
+func (a *APIMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(a)
+}
+
 func (n *APIMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -40,6 +44,10 @@ func (node *APIMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *APIMetricsNode) GetParent() MetricNode              { return node.parent }
 func (node *APIMetricsNode) GetPath() string                    { return node.path }
 func (node *APIMetricsNode) GetChild(name string) (MetricNode, error) {
+	if node.api == nil {
+		return nil, fmt.Errorf("no API data available")
+	}
+
 	switch name {
 	case "last_minute":
 		return &APILastMinuteNode{
@@ -71,6 +79,10 @@ type APILastMinuteNode struct {
 	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *APILastMinuteNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APILastMinuteNode) ShouldPauseRefresh() bool {
@@ -306,6 +318,10 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 }
 
 func (node *APILastMinuteNode) GetLeafData() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	total := node.api.LastMinuteTotal()
 	return generateAPIStatsDisplay(total, len(node.api.LastMinuteAPI), true, node.api.LastMinuteAPI)
 }
@@ -336,6 +352,10 @@ type APILastDayNode struct {
 	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *APILastDayNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APILastDayNode) ShouldPauseRefresh() bool {
@@ -384,6 +404,10 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 }
 
 func (node *APILastDayNode) GetLeafData() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	total := node.api.LastDayTotal()
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
@@ -422,6 +446,10 @@ type APILastDayAllNode struct {
 	api    *madmin.APIMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *APILastDayAllNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APILastDayAllNode) ShouldPauseRefresh() bool {
@@ -512,6 +540,10 @@ func (node *APILastDayAllNode) GetChild(name string) (MetricNode, error) {
 }
 
 func (node *APILastDayAllNode) GetLeafData() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	total := node.api.LastDayTotal()
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
@@ -528,6 +560,10 @@ type APILastDayEndpointNode struct {
 	segmented madmin.SegmentedAPIMetrics
 	parent    MetricNode
 	path      string
+}
+
+func (node *APILastDayEndpointNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APILastDayEndpointNode) GetChildren() []MetricChild {
@@ -619,6 +655,10 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 }
 
 func (node *APILastDayEndpointNode) GetLeafData() map[string]string {
+	if len(node.segmented.Segments) == 0 {
+		return map[string]string{"Status": "No endpoint data available"}
+	}
+
 	// Calculate total stats for this endpoint
 	total := madmin.APIStats{}
 	for _, segment := range node.segmented.Segments {
@@ -644,11 +684,19 @@ type APISinceStartNode struct {
 	path   string
 }
 
+func (node *APISinceStartNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *APISinceStartNode) GetChildren() []MetricChild {
 	return []MetricChild{}
 }
 
 func (node *APISinceStartNode) GetLeafData() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	return generateAPIStatsDisplay(node.api.SinceStart, 0, false, nil)
 }
 
@@ -672,11 +720,19 @@ type APILastDayTotalNode struct {
 	path   string
 }
 
+func (node *APILastDayTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *APILastDayTotalNode) GetChildren() []MetricChild {
 	return []MetricChild{}
 }
 
 func (node *APILastDayTotalNode) GetLeafData() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	total := node.api.LastDayTotal()
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
@@ -701,6 +757,10 @@ type APITimeSegmentAllNode struct {
 	segmentTime time.Time
 	parent      MetricNode
 	path        string
+}
+
+func (node *APITimeSegmentAllNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APITimeSegmentAllNode) GetChildren() []MetricChild {
@@ -729,6 +789,10 @@ type APITimeSegmentNode struct {
 	segmentTime time.Time
 	parent      MetricNode
 	path        string
+}
+
+func (node *APITimeSegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APITimeSegmentNode) ShouldPauseRefresh() bool {
@@ -780,6 +844,10 @@ type APIEndpointNode struct {
 	stats    madmin.APIStats
 	parent   MetricNode
 	path     string
+}
+
+func (node *APIEndpointNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *APIEndpointNode) ShouldPauseRefresh() bool {
@@ -945,6 +1013,10 @@ type APISegmentedNode struct {
 	path      string
 }
 
+func (node *APISegmentedNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *APISegmentedNode) GetChildren() []MetricChild {
 	var children []MetricChild
 	for i := range node.segmented.Segments {
@@ -1012,6 +1084,10 @@ func (node *APISegmentedNode) GetChild(name string) (MetricNode, error) {
 
 // generateAPIOverviewDashboard creates a clean API performance dashboard
 func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
+	if node.api == nil {
+		return map[string]string{"Status": "No API metrics available"}
+	}
+
 	lastMinute := node.api.LastMinuteTotal()
 
 	// Use ordered slice to maintain consistent display order

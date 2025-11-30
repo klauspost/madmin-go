@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -176,8 +177,9 @@ func (ns *NavigationState) NavigateInto() error {
 	// Check if new node requires different flags or types than what we have
 	currentFlags := ns.getCurrentMetricFlags()
 	currentTypes := ns.getCurrentMetricTypes()
-	newFlags := childNode.GetMetricFlags()
-	newTypes := childNode.GetMetricType()
+	childOpts := childNode.GetOpts()
+	newFlags := childOpts.Flags
+	newTypes := childOpts.Type
 
 	needsRefresh := false
 	// Check if we need new flags
@@ -301,18 +303,19 @@ func (ns *NavigationState) Refresh() error {
 	opts := madmin.MetricsOptions{}
 	opts.N = 1
 
-	// Add current node's required metric flags
+	// Get current node's complete requirements including enhanced filtering
 	if ns.currentNode != nil {
-		opts.Flags |= ns.currentNode.GetMetricFlags()
+		currentOpts := ns.currentNode.GetOpts()
+		opts.Flags |= currentOpts.Flags
+		opts.Type |= currentOpts.Type
+		// Include enhanced filtering options
+		opts.Hosts = currentOpts.Hosts
+		opts.Disks = currentOpts.Disks
+		opts.DrivePoolIdx = currentOpts.DrivePoolIdx
+		opts.DriveSetIdx = currentOpts.DriveSetIdx
 	}
-
-	// Traverse up parent chain to collect breakdown flags from any ancestor nodes
-	node := ns.currentNode
-	for node != nil {
-		opts.Flags |= node.GetMetricFlags()
-		opts.Type |= node.GetMetricType()
-		node = node.GetParent()
-	}
+	// There must be one, otherwise all are collected. Just use API.
+	opts.Type = cmp.Or(opts.Type, madmin.MetricsAPI)
 	var metrics madmin.RealtimeMetrics
 	var gotMetrics bool
 
@@ -471,7 +474,8 @@ func (ns *NavigationState) GetMetricInfo() (madmin.MetricType, madmin.MetricFlag
 	if ns.currentNode == nil {
 		return madmin.MetricsNone, 0
 	}
-	return ns.currentNode.GetMetricType(), ns.currentNode.GetMetricFlags()
+	opts := ns.currentNode.GetOpts()
+	return opts.Type, opts.Flags
 }
 
 // CanNavigateBack returns true if we can navigate back
@@ -483,7 +487,8 @@ func (ns *NavigationState) CanNavigateBack() bool {
 func (ns *NavigationState) getCurrentMetricFlags() madmin.MetricFlags {
 	// For now, return the current node's flags if any
 	if ns.currentNode != nil {
-		return ns.currentNode.GetMetricFlags()
+		opts := ns.currentNode.GetOpts()
+		return opts.Flags
 	}
 	return 0
 }

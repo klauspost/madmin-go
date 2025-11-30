@@ -17,6 +17,10 @@ type SiteResyncMetricsNode struct {
 	path   string
 }
 
+func (node *SiteResyncMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewSiteResyncMetricsNode(resync *madmin.SiteResyncMetrics, parent MetricNode, path string) *SiteResyncMetricsNode {
 	return &SiteResyncMetricsNode{
 		resync: resync,

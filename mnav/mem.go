@@ -34,6 +34,10 @@ type MemMetricsNavigator struct {
 	path   string
 }
 
+func (node *MemMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 // NewMemMetricsNavigator creates a new memory metrics navigator
 func NewMemMetricsNavigator(mem *madmin.MemMetrics, parent MetricNode, path string) *MemMetricsNavigator {
 	return &MemMetricsNavigator{mem: mem, parent: parent, path: path}
@@ -121,6 +125,10 @@ func (node *MemMetricsNavigator) ShouldPauseRefresh() bool {
 }
 
 func (node *MemMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.mem == nil {
+		return nil, fmt.Errorf("no memory data available")
+	}
+
 	switch name {
 	case "usage":
 		return NewMemUsageNode(node.mem, node, fmt.Sprintf("%s/usage", node.path)), nil
@@ -140,6 +148,10 @@ type MemUsageNode struct {
 	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *MemUsageNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewMemUsageNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemUsageNode {
@@ -229,6 +241,10 @@ type MemSystemNode struct {
 	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *MemSystemNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewMemSystemNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemSystemNode {
@@ -321,6 +337,10 @@ type MemSwapNode struct {
 	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *MemSwapNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewMemSwapNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemSwapNode {
@@ -425,6 +445,10 @@ type MemLimitsNode struct {
 	mem    *madmin.MemMetrics
 	parent MetricNode
 	path   string
+}
+
+func (node *MemLimitsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewMemLimitsNode(mem *madmin.MemMetrics, parent MetricNode, path string) *MemLimitsNode {

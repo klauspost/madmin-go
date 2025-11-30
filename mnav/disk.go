@@ -16,11 +16,21 @@ type DiskMetricsNavigator struct {
 	disk   *madmin.DiskMetric
 	parent MetricNode
 	path   string
+	opts   madmin.MetricsOptions
+}
+
+func (node *DiskMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	opts := getNodeOpts(node)
+	opts.DriveSetIdx = append(opts.DriveSetIdx, node.opts.DriveSetIdx...)
+	opts.DrivePoolIdx = append(opts.DrivePoolIdx, node.opts.DrivePoolIdx...)
+	opts.Disks = append(opts.Disks, node.opts.Disks...)
+	return opts
 }
 
 // NewDiskMetricsNavigator creates a new enhanced disk metrics navigator
-func NewDiskMetricsNavigator(disk *madmin.DiskMetric, parent MetricNode, path string) *DiskMetricsNavigator {
-	return &DiskMetricsNavigator{disk: disk, parent: parent, path: path}
+func NewDiskMetricsNavigator(disk *madmin.DiskMetric, parent MetricNode, path string, opts madmin.MetricsOptions) *DiskMetricsNavigator {
+	opts.Type |= madmin.MetricsDisk
+	return &DiskMetricsNavigator{disk: disk, parent: parent, path: path, opts: opts}
 }
 
 func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
@@ -182,11 +192,11 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 }
 
 func (node *DiskMetricsNavigator) GetMetricType() madmin.MetricType {
-	return madmin.MetricsDisk
+	return node.opts.Type
 }
 
 func (node *DiskMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
-	return 0
+	return node.opts.Flags
 }
 
 func (node *DiskMetricsNavigator) GetParent() MetricNode {
@@ -202,6 +212,10 @@ func (node *DiskMetricsNavigator) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.disk == nil {
+		return nil, fmt.Errorf("no disk data available")
+	}
+
 	switch name {
 	case "ops_last_minute":
 		return NewDiskLastMinuteNode(node.disk.LastMinute, node, fmt.Sprintf("%s/ops_last_minute", node.path)), nil
@@ -229,6 +243,10 @@ type DiskSpaceNode struct {
 	space  *madmin.DriveSpaceInfo
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskSpaceNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskSpaceNode(space *madmin.DriveSpaceInfo, parent MetricNode, path string) *DiskSpaceNode {
@@ -284,6 +302,10 @@ type DiskLifetimeOpsNode struct {
 	ops    map[string]madmin.DiskAction
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskLifetimeOpsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *DiskLifetimeOpsNode) ShouldPauseRefresh() bool {
@@ -381,6 +403,10 @@ type DiskLastMinuteNode struct {
 	path   string
 }
 
+func (node *DiskLastMinuteNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewDiskLastMinuteNode(ops map[string]madmin.DiskAction, parent MetricNode, path string) *DiskLastMinuteNode {
 	return &DiskLastMinuteNode{ops: ops, parent: parent, path: path}
 }
@@ -475,6 +501,10 @@ type DiskLastDayNode struct {
 	segmented map[string]madmin.SegmentedDiskActions
 	parent    MetricNode
 	path      string
+}
+
+func (node *DiskLastDayNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskLastDayNode(segmented map[string]madmin.SegmentedDiskActions, parent MetricNode, path string) *DiskLastDayNode {
@@ -631,6 +661,10 @@ type DiskIOStatsNode struct {
 	path   string
 }
 
+func (node *DiskIOStatsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewDiskIOStatsNode(disk *madmin.DiskMetric, parent MetricNode, path string) *DiskIOStatsNode {
 	return &DiskIOStatsNode{disk: disk, parent: parent, path: path}
 }
@@ -693,6 +727,10 @@ type DiskIOMinuteStatsNode struct {
 	disk   *madmin.DiskMetric
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskIOMinuteStatsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskIOMinuteStatsNode(disk *madmin.DiskMetric, parent MetricNode, path string) *DiskIOMinuteStatsNode {
@@ -768,6 +806,10 @@ type DiskIODailyStatsNode struct {
 	disk   *madmin.DiskMetric
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskIODailyStatsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskIODailyStatsNode(disk *madmin.DiskMetric, parent MetricNode, path string) *DiskIODailyStatsNode {
@@ -945,6 +987,10 @@ type DiskHealingNode struct {
 	path    string
 }
 
+func (node *DiskHealingNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewDiskHealingNode(healing *madmin.DriveHealInfo, parent MetricNode, path string) *DiskHealingNode {
 	return &DiskHealingNode{healing: healing, parent: parent, path: path}
 }
@@ -986,6 +1032,10 @@ type DiskLastDayOperationNode struct {
 	segmented     madmin.SegmentedDiskActions
 	parent        MetricNode
 	path          string
+}
+
+func (node *DiskLastDayOperationNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskLastDayOperationNode(operationType string, segmented madmin.SegmentedDiskActions, parent MetricNode, path string) *DiskLastDayOperationNode {
@@ -1092,6 +1142,10 @@ type DiskOperationTotalNode struct {
 	path          string
 }
 
+func (node *DiskOperationTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *DiskOperationTotalNode) ShouldPauseUpdates() bool           { return false }
 func (node *DiskOperationTotalNode) GetChildren() []MetricChild         { return []MetricChild{} }
 func (node *DiskOperationTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
@@ -1160,6 +1214,10 @@ type DiskOperationTimeSegmentNode struct {
 	path          string
 }
 
+func (node *DiskOperationTimeSegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *DiskOperationTimeSegmentNode) ShouldPauseUpdates() bool   { return false }
 func (node *DiskOperationTimeSegmentNode) GetChildren() []MetricChild { return []MetricChild{} }
 func (node *DiskOperationTimeSegmentNode) GetMetricType() madmin.MetricType {
@@ -1220,6 +1278,10 @@ type DiskIOTimeSegmentNode struct {
 	interval    int // Segment interval in seconds
 	parent      MetricNode
 	path        string
+}
+
+func (node *DiskIOTimeSegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskIOTimeSegmentNode(segment madmin.DiskIOStats, segmentTime time.Time, interval int, parent MetricNode, path string) *DiskIOTimeSegmentNode {
@@ -1293,6 +1355,10 @@ type DiskIOTotalNode struct {
 	dailyStats madmin.SegmentedDiskIO
 	parent     MetricNode
 	path       string
+}
+
+func (node *DiskIOTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *DiskIOTotalNode) ShouldPauseUpdates() bool           { return false }
@@ -1384,6 +1450,10 @@ type DiskCacheNode struct {
 	path   string
 }
 
+func (node *DiskCacheNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewDiskCacheNode(cache interface{}, parent MetricNode, path string) *DiskCacheNode {
 	return &DiskCacheNode{cache: cache, parent: parent, path: path}
 }
@@ -1414,6 +1484,10 @@ type DiskSummaryNode struct {
 	disk   *madmin.DiskMetric
 	parent MetricNode
 	path   string
+}
+
+func (node *DiskSummaryNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskSummaryNode(disk *madmin.DiskMetric, parent MetricNode, path string) *DiskSummaryNode {
@@ -1589,6 +1663,10 @@ type DiskActionNode struct {
 	action     *madmin.DiskAction
 	parent     MetricNode
 	path       string
+}
+
+func (node *DiskActionNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewDiskActionNode(actionType string, action *madmin.DiskAction, parent MetricNode, path string) *DiskActionNode {

@@ -13,6 +13,10 @@ type NetMetricsNavigator struct {
 	path   string
 }
 
+func (node *NetMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 // NewNetMetricsNavigator creates a new network metrics navigator
 func NewNetMetricsNavigator(net *madmin.NetMetrics, parent MetricNode, path string) *NetMetricsNavigator {
 	return &NetMetricsNavigator{net: net, parent: parent, path: path}
@@ -124,6 +128,10 @@ type NetInterfacesNode struct {
 	path    string
 }
 
+func (node *NetInterfacesNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *NetInterfacesNode) GetPath() string {
 	return node.path
 }
@@ -213,6 +221,10 @@ type NetInterfaceNode struct {
 	path          string
 }
 
+func (node *NetInterfaceNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *NetInterfaceNode) GetPath() string {
 	return node.path
 }
@@ -275,6 +287,10 @@ type NetInternodeNode struct {
 	metrics *madmin.NetMetrics
 	parent  MetricNode
 	path    string
+}
+
+func (node *NetInternodeNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *NetInternodeNode) GetPath() string {

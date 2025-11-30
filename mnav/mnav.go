@@ -45,6 +45,10 @@ type MetricNode interface {
 	// ShouldPauseRefresh returns true if the node should be paused from refreshing.
 	// This will be enabled when data isn't expected to be updated for a while.
 	ShouldPauseRefresh() bool
+
+	// GetOpts returns the metrics options for the current node.
+	// This includes all parent nodes.
+	GetOpts() madmin.MetricsOptions
 }
 
 // MetricChild represents a navigable child
@@ -106,6 +110,28 @@ type RealtimeMetricsNode struct {
 	metrics *madmin.RealtimeMetrics
 }
 
+func getNodeOpts(node MetricNode) madmin.MetricsOptions {
+	var opts madmin.MetricsOptions
+	opts.Type = node.GetMetricType()
+	opts.Flags = node.GetMetricFlags()
+	parent := node.GetParent()
+	if parent != nil {
+		// This will also fetch from parent.
+		pOpts := parent.GetOpts()
+		opts.Type |= parent.GetMetricType()
+		opts.Flags |= parent.GetMetricFlags()
+		opts.Hosts = append(opts.Hosts, pOpts.Hosts...)
+		opts.Disks = append(opts.Disks, pOpts.Disks...)
+		opts.DrivePoolIdx = append(opts.DrivePoolIdx, pOpts.DrivePoolIdx...)
+		opts.DriveSetIdx = append(opts.DriveSetIdx, pOpts.DriveSetIdx...)
+	}
+	return opts
+}
+
+func (node *RealtimeMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
 	// Legacy method - not used in interface, return false for default behavior
 	return false
@@ -157,17 +183,7 @@ func (node *RealtimeMetricsNode) GetMetricType() madmin.MetricType {
 }
 
 func (node *RealtimeMetricsNode) GetMetricFlags() madmin.MetricFlags {
-	var flags madmin.MetricFlags
-	if len(node.metrics.ByHost) > 0 {
-		flags |= madmin.MetricsByHost
-	}
-	if len(node.metrics.ByDisk) > 0 {
-		flags |= madmin.MetricsByDisk
-	}
-	if len(node.metrics.ByDiskSet) > 0 {
-		flags |= madmin.MetricsByDiskSet
-	}
-	return flags
+	return 0
 }
 
 func (node *RealtimeMetricsNode) GetParent() MetricNode {
@@ -188,7 +204,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Aggregated.Scanner, node, "scanner"), nil
 	case "disk":
-		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "disk"), nil
+		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "disk", madmin.MetricsOptions{}), nil
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.Aggregated.OS, node, "os"), nil
 	case "batch_jobs":
@@ -222,7 +238,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 			path:        "by_host",
 			nodeFactory: func(key string, value interface{}) MetricNode {
 				if metrics, ok := value.(madmin.Metrics); ok {
-					return &MetricsNode{metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key)}
+					return &MetricsNode{metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key),
+						opts: madmin.MetricsOptions{Type: madmin.MetricsNone, Flags: madmin.MetricsByHost, Hosts: []string{key}}}
 				}
 				return nil
 			},
@@ -238,7 +255,7 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 				if diskMetric, ok := value.(madmin.DiskMetric); ok {
 					// URL-encode the disk name to handle slashes and special characters
 					encodedKey := url.PathEscape(key)
-					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", encodedKey))
+					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", encodedKey), madmin.MetricsOptions{Flags: madmin.MetricsByDisk, Disks: []string{key}})
 				}
 				return nil
 			},
@@ -261,6 +278,11 @@ type MetricsNode struct {
 	metrics *madmin.Metrics
 	parent  MetricNode
 	path    string
+	opts    madmin.MetricsOptions
+}
+
+func (node *MetricsNode) GetOpts() madmin.MetricsOptions {
+	return node.opts
 }
 
 func (node *MetricsNode) ShouldPauseUpdates() bool {
@@ -290,11 +312,11 @@ func (node *MetricsNode) GetLeafData() map[string]string {
 }
 
 func (node *MetricsNode) GetMetricType() madmin.MetricType {
-	return madmin.MetricsNone // All types available at Metrics level
+	return node.opts.Type
 }
 
 func (node *MetricsNode) GetMetricFlags() madmin.MetricFlags {
-	return 0 // No specific flags at this level
+	return node.opts.Flags
 }
 
 func (node *MetricsNode) GetParent() MetricNode {
@@ -314,7 +336,7 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Scanner, node, fmt.Sprintf("%s/scanner", node.path)), nil
 	case "disk":
-		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/disk", node.path)), nil
+		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/disk", node.path), madmin.MetricsOptions{}), nil
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.OS, node, fmt.Sprintf("%s/os", node.path)), nil
 	case "batch_jobs":
@@ -350,6 +372,10 @@ type MapNode struct {
 	parent      MetricNode
 	path        string
 	nodeFactory func(key string, value interface{}) MetricNode
+}
+
+func (node *MapNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *MapNode) ShouldPauseUpdates() bool {
@@ -504,6 +530,10 @@ type DiskSetMapNode struct {
 	metricFlags madmin.MetricFlags
 	parent      MetricNode
 	path        string
+}
+
+func (node *DiskSetMapNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func (node *DiskSetMapNode) ShouldPauseUpdates() bool {
@@ -866,10 +896,14 @@ func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 	}
 
 	if diskMetric, exists := node.poolSets[setID]; exists {
-		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID)), nil
+		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID), madmin.MetricsOptions{DriveSetIdx: []int{setID}}), nil
 	}
 
 	return nil, fmt.Errorf("set not found: %d", setID)
 }
 
-// Stub implementations for all other metric node types
+func (node *DiskSetPoolNavigator) GetOpts() madmin.MetricsOptions {
+	opts := getNodeOpts(node)
+	opts.PoolIdx = append(opts.PoolIdx, node.poolID)
+	return opts
+}

@@ -43,6 +43,10 @@ type RuntimeMetricsNavigator struct {
 	path    string
 }
 
+func (node *RuntimeMetricsNavigator) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 // NewRuntimeMetricsNavigator creates a new runtime metrics navigator
 func NewRuntimeMetricsNavigator(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *RuntimeMetricsNavigator {
 	return &RuntimeMetricsNavigator{runtime: runtime, parent: parent, path: path}
@@ -108,6 +112,10 @@ func (node *RuntimeMetricsNavigator) ShouldPauseRefresh() bool {
 }
 
 func (node *RuntimeMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.runtime == nil {
+		return nil, fmt.Errorf("no runtime data available")
+	}
+
 	switch name {
 	case "gc":
 		return NewGCMetricsNode(node.runtime, node, fmt.Sprintf("%s/gc", node.path)), nil
@@ -129,6 +137,10 @@ type GCMetricsNode struct {
 	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
+}
+
+func (node *GCMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewGCMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *GCMetricsNode {
@@ -226,6 +238,10 @@ type MemoryMetricsNode struct {
 	path    string
 }
 
+func (node *MemoryMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewMemoryMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *MemoryMetricsNode {
 	return &MemoryMetricsNode{runtime: runtime, parent: parent, path: path}
 }
@@ -314,6 +330,10 @@ type SchedulerMetricsNode struct {
 	path    string
 }
 
+func (node *SchedulerMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewSchedulerMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *SchedulerMetricsNode {
 	return &SchedulerMetricsNode{runtime: runtime, parent: parent, path: path}
 }
@@ -387,6 +407,10 @@ type CPUClassesMetricsNode struct {
 	path    string
 }
 
+func (node *CPUClassesMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
 func NewCPUClassesMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *CPUClassesMetricsNode {
 	return &CPUClassesMetricsNode{runtime: runtime, parent: parent, path: path}
 }
@@ -456,6 +480,10 @@ type SyncMetricsNode struct {
 	runtime *madmin.RuntimeMetrics
 	parent  MetricNode
 	path    string
+}
+
+func (node *SyncMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
 func NewSyncMetricsNode(runtime *madmin.RuntimeMetrics, parent MetricNode, path string) *SyncMetricsNode {
