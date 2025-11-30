@@ -812,7 +812,6 @@ func (node *ReplicationLastDayAggregatedNode) GetLeafData() map[string]string {
 	aggregated.Nodes = targetCount
 	data := generateReplicationStatsDisplay(aggregated, true)
 	data["Aggregated Targets"] = fmt.Sprintf("%d targets with last day data", targetCount)
-	data["LAST DAY AGGREGATE"] = fmt.Sprintf("Combined statistics across all replication targets")
 
 	return data
 }

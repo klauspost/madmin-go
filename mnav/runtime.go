@@ -148,7 +148,7 @@ func (node *GCMetricsNode) GetLeafData() map[string]string {
 
 	// GC Overview
 	if cycles, ok := node.runtime.UintMetrics["/gc/cycles/total:gc-cycles"]; ok {
-		data["GC OVERVIEW"] = fmt.Sprintf("%s total GC cycles completed", formatRuntimeNumber(cycles))
+		data["GC Overview"] = fmt.Sprintf("%s total GC cycles completed", formatRuntimeNumber(cycles))
 	}
 
 	// Heap Statistics
@@ -186,7 +186,7 @@ func (node *GCMetricsNode) GetLeafData() map[string]string {
 			}
 		}
 
-		data["GC PAUSE ANALYSIS"] = fmt.Sprintf("%d pause measurements recorded", totalCount)
+		data["GC Pause Analysis"] = fmt.Sprintf("%d pause measurements recorded", totalCount)
 		if totalCount > 0 {
 			// Convert to milliseconds for better readability
 			avgPauseMs := (totalSum / float64(totalCount)) * 1000
@@ -242,7 +242,7 @@ func (node *MemoryMetricsNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Memory Classes Overview
-	data["MEMORY CLASSES"] = "Go runtime memory breakdown by usage"
+	data["Memory Classes"] = "Go runtime memory breakdown by usage"
 
 	// Heap memory
 	if heapObjects, ok := node.runtime.UintMetrics["/memory/classes/heap/objects:bytes"]; ok {
@@ -263,12 +263,11 @@ func (node *MemoryMetricsNode) GetLeafData() map[string]string {
 
 	// Stack memory
 	if heapStacks, ok := node.runtime.UintMetrics["/memory/classes/heap/stacks:bytes"]; ok {
-		data["STACK MEMORY"] = fmt.Sprintf("%s allocated to goroutine stacks", formatRuntimeBytes(heapStacks))
+		data["Stack Memory"] = fmt.Sprintf("%s allocated to goroutine stacks", formatRuntimeBytes(heapStacks))
 	}
 
 	// Runtime structures
 	if metadata, ok := node.runtime.UintMetrics["/memory/classes/metadata/mcache/free:bytes"]; ok {
-		data["RUNTIME STRUCTURES"] = "Memory used by Go runtime internals"
 		data["MCache Free"] = fmt.Sprintf("%s free mcache memory", formatRuntimeBytes(metadata))
 	}
 
@@ -332,7 +331,7 @@ func (node *SchedulerMetricsNode) GetLeafData() map[string]string {
 
 	// Goroutine Statistics
 	if goroutines, ok := node.runtime.UintMetrics["/sched/goroutines:goroutines"]; ok {
-		data["GOROUTINE STATISTICS"] = fmt.Sprintf("%s active goroutines", formatRuntimeNumber(goroutines))
+		data["Goroutine Statistics"] = fmt.Sprintf("%s active goroutines", formatRuntimeNumber(goroutines))
 	}
 
 	// Scheduling Latencies
@@ -353,7 +352,7 @@ func (node *SchedulerMetricsNode) GetLeafData() map[string]string {
 			}
 		}
 
-		data["SCHEDULING PERFORMANCE"] = fmt.Sprintf("%d scheduling measurements", totalCount)
+		data["Scheduling Performance"] = fmt.Sprintf("%d scheduling measurements", totalCount)
 		if totalCount > 0 {
 			avgLatencyMs := (totalSum / float64(totalCount)) * 1000
 			data["Average Scheduling Latency"] = fmt.Sprintf("%.2fms per goroutine schedule", avgLatencyMs)

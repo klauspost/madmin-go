@@ -159,7 +159,7 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 			iosPerSec := float64(totalIOs) / timeframeSeconds
 			mbPerSec := float64(totalBytes) / timeframeSeconds / (1024 * 1024)
 
-			data["IO SUMMARY"] = fmt.Sprintf("%.1f IO/sec, %.2f MB/s (%d drives)", iosPerSec, mbPerSec, minute.N)
+			data["IO Summary"] = fmt.Sprintf("%.1f IO/sec, %.2f MB/s (%d drives)", iosPerSec, mbPerSec, minute.N)
 		}
 	}
 
@@ -1430,7 +1430,7 @@ func (node *DiskSummaryNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Executive Summary Header
-	data["DISK SUMMARY"] = fmt.Sprintf("Collected at %s",
+	data["Disk Summary"] = fmt.Sprintf("Collected at %s",
 		node.disk.CollectedAt.Format("2006-01-02 15:04:05"))
 
 	// Cluster Health Overview

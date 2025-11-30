@@ -42,7 +42,7 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 	data := make(map[string]string)
 
 	// Overview
-	data["PROCESS OVERVIEW"] = fmt.Sprintf("Collected at %s",
+	data["00:Process Overview"] = fmt.Sprintf("Collected at %s",
 		node.process.CollectedAt.Format("2006-01-02 15:04:05"))
 
 	// Cluster information
