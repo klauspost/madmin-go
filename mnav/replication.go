@@ -303,9 +303,6 @@ func (node *ReplicationMetricsNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationMetricsNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationMetricsNode) GetPath() string                    { return node.path }
-func (node *ReplicationMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationLastHourNode shows aggregated last hour statistics
 type ReplicationLastHourNode struct {
@@ -355,9 +352,6 @@ func (node *ReplicationLastHourNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationLastHourNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationLastHourNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationLastHourNode) GetPath() string                    { return node.path }
-func (node *ReplicationLastHourNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationTargetNode handles navigation for individual replication targets
 type ReplicationTargetNode struct {
@@ -456,9 +450,6 @@ func (node *ReplicationTargetNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationTargetNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationTargetNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationTargetNode) GetPath() string                    { return node.path }
-func (node *ReplicationTargetNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationTargetLastHourNode shows last hour statistics for a specific target
 type ReplicationTargetLastHourNode struct {
@@ -501,9 +492,6 @@ func (node *ReplicationTargetLastHourNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationTargetLastHourNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationTargetLastHourNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationTargetLastHourNode) GetPath() string                    { return node.path }
-func (node *ReplicationTargetLastHourNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationSinceStartNode shows cumulative statistics since startup for a target
 type ReplicationSinceStartNode struct {
@@ -546,9 +534,6 @@ func (node *ReplicationSinceStartNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationSinceStartNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationSinceStartNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationSinceStartNode) GetPath() string                    { return node.path }
-func (node *ReplicationSinceStartNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationLastDayNode handles time segmentation navigation for LastDay data
 type ReplicationLastDayNode struct {
@@ -673,14 +658,12 @@ func (node *ReplicationLastDayNode) GetChild(name string) (MetricNode, error) {
 func (node *ReplicationLastDayNode) GetMetricType() madmin.MetricType {
 	return madmin.MetricsReplication
 }
+
 func (node *ReplicationLastDayNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
 func (node *ReplicationLastDayNode) GetParent() MetricNode { return node.parent }
 func (node *ReplicationLastDayNode) GetPath() string       { return node.path }
-func (node *ReplicationLastDayNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationLastDayTotalNode shows aggregated last day statistics
 type ReplicationLastDayTotalNode struct {
@@ -713,14 +696,12 @@ func (node *ReplicationLastDayTotalNode) GetChild(name string) (MetricNode, erro
 func (node *ReplicationLastDayTotalNode) GetMetricType() madmin.MetricType {
 	return madmin.MetricsReplication
 }
+
 func (node *ReplicationLastDayTotalNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
 func (node *ReplicationLastDayTotalNode) GetParent() MetricNode { return node.parent }
 func (node *ReplicationLastDayTotalNode) GetPath() string       { return node.path }
-func (node *ReplicationLastDayTotalNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationTimeSegmentNode shows statistics for a specific time segment
 type ReplicationTimeSegmentNode struct {
@@ -760,14 +741,12 @@ func (node *ReplicationTimeSegmentNode) GetChild(name string) (MetricNode, error
 func (node *ReplicationTimeSegmentNode) GetMetricType() madmin.MetricType {
 	return madmin.MetricsReplication
 }
+
 func (node *ReplicationTimeSegmentNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
 func (node *ReplicationTimeSegmentNode) GetParent() MetricNode { return node.parent }
 func (node *ReplicationTimeSegmentNode) GetPath() string       { return node.path }
-func (node *ReplicationTimeSegmentNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}
 
 // ReplicationLastDayAggregatedNode displays aggregated last day replication statistics across all targets
 type ReplicationLastDayAggregatedNode struct {
@@ -845,11 +824,9 @@ func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode,
 func (node *ReplicationLastDayAggregatedNode) GetMetricType() madmin.MetricType {
 	return madmin.MetricsReplication
 }
+
 func (node *ReplicationLastDayAggregatedNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
 func (node *ReplicationLastDayAggregatedNode) GetParent() MetricNode { return node.parent }
 func (node *ReplicationLastDayAggregatedNode) GetPath() string       { return node.path }
-func (node *ReplicationLastDayAggregatedNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsReplication
-}

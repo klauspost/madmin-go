@@ -19,14 +19,31 @@ type MetricNavigator interface {
 
 // MetricNode interface for navigation
 type MetricNode interface {
+	// GetChildren returns a list of navigable children of current node
 	GetChildren() []MetricChild
+
+	// GetLeafData returns a map of leaf data for current node.
+	// Leaf data is data that is not navigable, such as a summary of the current node.
+	// Data may have sort keys, which is 'nn:Key' where 'nn' is the numeric order of the key.
 	GetLeafData() map[string]string
+
+	// GetMetricType returns the metric type required for the current node data.
 	GetMetricType() madmin.MetricType
+
+	// GetMetricFlags returns the metric flags required for the current node data.
 	GetMetricFlags() madmin.MetricFlags
+
+	// GetParent returns the parent node of the current node as set when creating the node.
 	GetParent() MetricNode
+
+	// GetPath returns the path of the current node relative to the root node as set when creating the node.
 	GetPath() string
-	RequiredMetricTypes() madmin.MetricType
+
+	// GetChild returns the child node with the given name.
 	GetChild(name string) (MetricNode, error)
+
+	// ShouldPauseRefresh returns true if the node should be paused from refreshing.
+	// This will be enabled when data isn't expected to be updated for a while.
 	ShouldPauseRefresh() bool
 }
 
@@ -161,10 +178,6 @@ func (node *RealtimeMetricsNode) GetPath() string {
 	return "/"
 }
 
-func (node *RealtimeMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsNone // All types available at root
-}
-
 func (node *RealtimeMetricsNode) ShouldPauseRefresh() bool {
 	return false // Default behavior - don't pause refresh
 }
@@ -290,10 +303,6 @@ func (node *MetricsNode) GetParent() MetricNode {
 
 func (node *MetricsNode) GetPath() string {
 	return node.path
-}
-
-func (node *MetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsNone // All types available at Metrics level
 }
 
 func (node *MetricsNode) ShouldPauseRefresh() bool {
@@ -424,10 +433,6 @@ func (node *MapNode) GetLeafData() map[string]string {
 
 func (node *MapNode) GetPath() string {
 	return node.path
-}
-
-func (node *MapNode) RequiredMetricTypes() madmin.MetricType {
-	return node.metricType
 }
 
 func (node *MapNode) ShouldPauseRefresh() bool {
@@ -683,10 +688,6 @@ func (node *DiskSetMapNode) GetPath() string {
 	return node.path
 }
 
-func (node *DiskSetMapNode) RequiredMetricTypes() madmin.MetricType {
-	return node.metricType
-}
-
 func (node *DiskSetMapNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -847,12 +848,11 @@ func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *DiskSetPoolNavigator) GetMetricType() madmin.MetricType       { return node.metricType }
-func (node *DiskSetPoolNavigator) GetMetricFlags() madmin.MetricFlags     { return node.metricFlags }
-func (node *DiskSetPoolNavigator) GetParent() MetricNode                  { return node.parent }
-func (node *DiskSetPoolNavigator) GetPath() string                        { return node.path }
-func (node *DiskSetPoolNavigator) RequiredMetricTypes() madmin.MetricType { return node.metricType }
-func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool               { return false }
+func (node *DiskSetPoolNavigator) GetMetricType() madmin.MetricType   { return node.metricType }
+func (node *DiskSetPoolNavigator) GetMetricFlags() madmin.MetricFlags { return node.metricFlags }
+func (node *DiskSetPoolNavigator) GetParent() MetricNode              { return node.parent }
+func (node *DiskSetPoolNavigator) GetPath() string                    { return node.path }
+func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool           { return false }
 
 func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 	if !strings.HasPrefix(name, "set_") {

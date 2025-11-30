@@ -326,10 +326,6 @@ func (node *CPUMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *CPUMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsCPU
-}
-
 func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - all CPU data shown in main display")
 }

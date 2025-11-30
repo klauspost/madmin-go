@@ -122,11 +122,10 @@ func (node *ProcessMetricsNode) GetChild(name string) (MetricNode, error) {
 	}
 }
 
-func (node *ProcessMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsProcess }
-func (node *ProcessMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *ProcessMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *ProcessMetricsNode) GetPath() string                        { return node.path }
-func (node *ProcessMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsProcess }
+func (node *ProcessMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessMetricsNode) GetPath() string                    { return node.path }
 
 // ProcessCPUTimesNode displays CPU timing statistics
 type ProcessCPUTimesNode struct {
@@ -165,7 +164,7 @@ func (node *ProcessCPUTimesNode) GetLeafData() map[string]string {
 		node.cpuTimes.GuestNice
 
 	if totalTime > 0 {
-		data["CPU TIME BREAKDOWN"] = "Cumulative CPU time across all processes"
+		data["00:CPU"] = "Cumulative CPU time across all processes"
 
 		data["User Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
 			node.cpuTimes.User, (node.cpuTimes.User/totalTime)*100)
@@ -216,9 +215,6 @@ func (node *ProcessCPUTimesNode) GetMetricType() madmin.MetricType   { return ma
 func (node *ProcessCPUTimesNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessCPUTimesNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessCPUTimesNode) GetPath() string                    { return node.path }
-func (node *ProcessCPUTimesNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // ProcessMemoryInfoNode displays memory usage information
 type ProcessMemoryInfoNode struct {
@@ -250,7 +246,7 @@ func (node *ProcessMemoryInfoNode) GetLeafData() map[string]string {
 		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.memInfo.Count)
 	}
 
-	data["MEMORY USAGE"] = "Cumulative memory usage across all processes"
+	data["00:Memory usage"] = "Cumulative memory usage across all processes"
 
 	// Primary memory metrics
 	if node.memInfo.RSS > 0 {
@@ -291,9 +287,6 @@ func (node *ProcessMemoryInfoNode) GetMetricType() madmin.MetricType   { return 
 func (node *ProcessMemoryInfoNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessMemoryInfoNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessMemoryInfoNode) GetPath() string                    { return node.path }
-func (node *ProcessMemoryInfoNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // ProcessIOCountersNode displays I/O statistics
 type ProcessIOCountersNode struct {
@@ -325,7 +318,7 @@ func (node *ProcessIOCountersNode) GetLeafData() map[string]string {
 		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.ioCounters.Count)
 	}
 
-	data["I/O STATISTICS"] = "Cumulative I/O operations across all processes"
+	data["00:I/O"] = "Cumulative I/O operations across all processes"
 
 	// Operation counts
 	if node.ioCounters.ReadCount > 0 {
@@ -364,9 +357,6 @@ func (node *ProcessIOCountersNode) GetMetricType() madmin.MetricType   { return 
 func (node *ProcessIOCountersNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessIOCountersNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessIOCountersNode) GetPath() string                    { return node.path }
-func (node *ProcessIOCountersNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // ProcessCtxSwitchesNode displays context switch statistics
 type ProcessCtxSwitchesNode struct {
@@ -398,7 +388,7 @@ func (node *ProcessCtxSwitchesNode) GetLeafData() map[string]string {
 		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.ctxSwitches.Count)
 	}
 
-	data["CONTEXT SWITCHES"] = "Cumulative context switches across all processes"
+	data["00:Context Switches"] = "Cumulative context switches across all processes"
 
 	totalSwitches := node.ctxSwitches.Voluntary + node.ctxSwitches.Involuntary
 
@@ -429,9 +419,6 @@ func (node *ProcessCtxSwitchesNode) GetMetricType() madmin.MetricType   { return
 func (node *ProcessCtxSwitchesNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessCtxSwitchesNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessCtxSwitchesNode) GetPath() string                    { return node.path }
-func (node *ProcessCtxSwitchesNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // ProcessPageFaultsNode displays page fault statistics
 type ProcessPageFaultsNode struct {
@@ -463,7 +450,7 @@ func (node *ProcessPageFaultsNode) GetLeafData() map[string]string {
 		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.pageFaults.Count)
 	}
 
-	data["PAGE FAULTS"] = "Cumulative page faults across all processes"
+	data["00:Page Faults"] = "Cumulative page faults across all processes"
 
 	totalFaults := node.pageFaults.MinorFaults + node.pageFaults.MajorFaults
 	totalChildFaults := node.pageFaults.ChildMinorFaults + node.pageFaults.ChildMajorFaults
@@ -507,9 +494,6 @@ func (node *ProcessPageFaultsNode) GetMetricType() madmin.MetricType   { return 
 func (node *ProcessPageFaultsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessPageFaultsNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessPageFaultsNode) GetPath() string                    { return node.path }
-func (node *ProcessPageFaultsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // ProcessMemoryMapsNode displays memory mapping details
 type ProcessMemoryMapsNode struct {
@@ -540,7 +524,7 @@ func (node *ProcessMemoryMapsNode) GetLeafData() map[string]string {
 
 	data := make(map[string]string)
 	data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.memMaps.Count)
-	data["MEMORY MAPS"] = "Memory mapping details (platform-specific)"
+	data["00:Memory Maps"] = "Memory mapping details (platform-specific)"
 
 	// Total mapping sizes
 	if node.memMaps.TotalSize > 0 {
@@ -591,9 +575,6 @@ func (node *ProcessMemoryMapsNode) GetMetricType() madmin.MetricType   { return 
 func (node *ProcessMemoryMapsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ProcessMemoryMapsNode) GetParent() MetricNode              { return node.parent }
 func (node *ProcessMemoryMapsNode) GetPath() string                    { return node.path }
-func (node *ProcessMemoryMapsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsProcess
-}
 
 // formatDuration formats a duration in a human-readable way
 func formatDuration(d time.Duration) string {

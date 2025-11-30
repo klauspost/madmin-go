@@ -53,6 +53,7 @@ func NewNavigationState(adminClient *madmin.AdminClient, metrics *madmin.Realtim
 func (ns *NavigationState) GetCurrentPath() string {
 	return ns.currentPath
 }
+
 func (ns *NavigationState) ShouldPauseRefresh() bool {
 	// Check if any node in the current path requires pausing refresh
 	if ns.currentNode != nil && ns.currentNode.ShouldPauseRefresh() {
@@ -176,7 +177,7 @@ func (ns *NavigationState) NavigateInto() error {
 	currentFlags := ns.getCurrentMetricFlags()
 	currentTypes := ns.getCurrentMetricTypes()
 	newFlags := childNode.GetMetricFlags()
-	newTypes := childNode.RequiredMetricTypes()
+	newTypes := childNode.GetMetricType()
 
 	needsRefresh := false
 	// Check if we need new flags
@@ -309,7 +310,7 @@ func (ns *NavigationState) Refresh() error {
 	node := ns.currentNode
 	for node != nil {
 		opts.Flags |= node.GetMetricFlags()
-		opts.Type |= node.RequiredMetricTypes()
+		opts.Type |= node.GetMetricType()
 		node = node.GetParent()
 	}
 	var metrics madmin.RealtimeMetrics

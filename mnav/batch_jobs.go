@@ -145,10 +145,6 @@ func (node *BatchJobMetricsNode) GetPath() string {
 	return node.path
 }
 
-func (node *BatchJobMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsBatchJobs
-}
-
 func (node *BatchJobMetricsNode) ShouldPauseRefresh() bool {
 	// Batch job overview should refresh to show new jobs and status changes
 	return false
@@ -264,10 +260,6 @@ func (node *BatchJobNode) GetParent() MetricNode {
 
 func (node *BatchJobNode) GetPath() string {
 	return node.path
-}
-
-func (node *BatchJobNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsBatchJobs
 }
 
 func (node *BatchJobNode) ShouldPauseRefresh() bool {

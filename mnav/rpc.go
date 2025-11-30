@@ -30,12 +30,11 @@ func (node *RPCMetricsNode) GetLeafData() map[string]string {
 	return node.generateRPCOverviewDashboard()
 }
 
-func (node *RPCMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCMetricsNode) GetPath() string                        { return node.path }
-func (node *RPCMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
-func (node *RPCMetricsNode) ShouldPauseRefresh() bool               { return false }
+func (node *RPCMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCMetricsNode) GetPath() string                    { return node.path }
+func (node *RPCMetricsNode) ShouldPauseRefresh() bool           { return false }
 
 func (node *RPCMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
@@ -142,11 +141,10 @@ func (node *RPCLastMinuteNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCLastMinuteNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCLastMinuteNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCLastMinuteNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCLastMinuteNode) GetPath() string                        { return node.path }
-func (node *RPCLastMinuteNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCLastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCLastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCLastMinuteNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCLastMinuteNode) GetPath() string                    { return node.path }
 
 func (node *RPCLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last minute RPC stats")
@@ -218,11 +216,10 @@ func (node *RPCLastDayNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(totalStats, len(node.rpc.LastDay), false, nil)
 }
 
-func (node *RPCLastDayNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCLastDayNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCLastDayNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCLastDayNode) GetPath() string                        { return node.path }
-func (node *RPCLastDayNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCLastDayNode) GetPath() string                    { return node.path }
 
 func (node *RPCLastDayNode) GetChild(name string) (MetricNode, error) {
 	// Handle "All" entry
@@ -368,11 +365,10 @@ func (node *RPCLastDayAllNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(totalStats, len(node.rpc.LastDay), false, nil)
 }
 
-func (node *RPCLastDayAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCLastDayAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCLastDayAllNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCLastDayAllNode) GetPath() string                        { return node.path }
-func (node *RPCLastDayAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCLastDayAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCLastDayAllNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCLastDayAllNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCLastDayAllNode) GetPath() string                    { return node.path }
 
 func (node *RPCLastDayAllNode) GetChild(name string) (MetricNode, error) {
 	if len(node.rpc.LastDay) == 0 {
@@ -441,11 +437,10 @@ func (node *RPCLastDayTotalNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(totalStats, len(node.rpc.LastDay), false, nil)
 }
 
-func (node *RPCLastDayTotalNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCLastDayTotalNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCLastDayTotalNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCLastDayTotalNode) GetPath() string                        { return node.path }
-func (node *RPCLastDayTotalNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCLastDayTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCLastDayTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCLastDayTotalNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCLastDayTotalNode) GetPath() string                    { return node.path }
 func (node *RPCLastDayTotalNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last day total node")
 }
@@ -465,11 +460,10 @@ func (node *RPCTimeSegmentAllNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(node.segment, 1, false, nil)
 }
 
-func (node *RPCTimeSegmentAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCTimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCTimeSegmentAllNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCTimeSegmentAllNode) GetPath() string                        { return node.path }
-func (node *RPCTimeSegmentAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCTimeSegmentAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCTimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCTimeSegmentAllNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCTimeSegmentAllNode) GetPath() string                    { return node.path }
 func (node *RPCTimeSegmentAllNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for time segment")
 }
@@ -539,11 +533,10 @@ func (node *RPCLastDayHandlerNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(totalStats, 1, false, nil)
 }
 
-func (node *RPCLastDayHandlerNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCLastDayHandlerNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCLastDayHandlerNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCLastDayHandlerNode) GetPath() string                        { return node.path }
-func (node *RPCLastDayHandlerNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCLastDayHandlerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCLastDayHandlerNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCLastDayHandlerNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCLastDayHandlerNode) GetPath() string                    { return node.path }
 
 func (node *RPCLastDayHandlerNode) GetChild(name string) (MetricNode, error) {
 	// Handle "Total" entry
@@ -617,11 +610,10 @@ func (node *RPCConnectionsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCConnectionsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCConnectionsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCConnectionsNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCConnectionsNode) GetPath() string                        { return node.path }
-func (node *RPCConnectionsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCConnectionsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCConnectionsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCConnectionsNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCConnectionsNode) GetPath() string                    { return node.path }
 
 func (node *RPCConnectionsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
@@ -677,9 +669,6 @@ func (node *RPCConnectionSummaryNode) GetMetricType() madmin.MetricType   { retu
 func (node *RPCConnectionSummaryNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCConnectionSummaryNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCConnectionSummaryNode) GetPath() string                    { return node.path }
-func (node *RPCConnectionSummaryNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsRPC
-}
 func (node *RPCConnectionSummaryNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for connection summary")
 }
@@ -782,11 +771,10 @@ func (node *RPCByDestinationNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCByDestinationNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCByDestinationNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCByDestinationNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCByDestinationNode) GetPath() string                        { return node.path }
-func (node *RPCByDestinationNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCByDestinationNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCByDestinationNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCByDestinationNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCByDestinationNode) GetPath() string                    { return node.path }
 
 func (node *RPCByDestinationNode) GetChild(name string) (MetricNode, error) {
 	if stats, exists := node.rpc.ByDestination[name]; exists {
@@ -898,11 +886,10 @@ func (node *RPCByCallerNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCByCallerNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCByCallerNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCByCallerNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCByCallerNode) GetPath() string                        { return node.path }
-func (node *RPCByCallerNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCByCallerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCByCallerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCByCallerNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCByCallerNode) GetPath() string                    { return node.path }
 
 func (node *RPCByCallerNode) GetChild(name string) (MetricNode, error) {
 	if stats, exists := node.rpc.ByCaller[name]; exists {
@@ -979,11 +966,10 @@ func (node *RPCDestinationNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCDestinationNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCDestinationNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCDestinationNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCDestinationNode) GetPath() string                        { return node.path }
-func (node *RPCDestinationNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCDestinationNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCDestinationNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCDestinationNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCDestinationNode) GetPath() string                    { return node.path }
 func (node *RPCDestinationNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for destination")
 }
@@ -1049,11 +1035,10 @@ func (node *RPCCallerNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCCallerNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCCallerNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCCallerNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCCallerNode) GetPath() string                        { return node.path }
-func (node *RPCCallerNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCCallerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCCallerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCCallerNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCCallerNode) GetPath() string                    { return node.path }
 func (node *RPCCallerNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for caller")
 }
@@ -1073,11 +1058,10 @@ func (node *RPCHandlerNode) GetLeafData() map[string]string {
 	return generateRPCStatsDisplay(node.stats, 1, false, nil)
 }
 
-func (node *RPCHandlerNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCHandlerNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *RPCHandlerNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCHandlerNode) GetPath() string                        { return node.path }
-func (node *RPCHandlerNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCHandlerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCHandlerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RPCHandlerNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCHandlerNode) GetPath() string                    { return node.path }
 func (node *RPCHandlerNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for RPC handler")
 }
@@ -1101,11 +1085,10 @@ func (node *RPCHandlerTotalNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCHandlerTotalNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCHandlerTotalNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCHandlerTotalNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCHandlerTotalNode) GetPath() string                        { return node.path }
-func (node *RPCHandlerTotalNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCHandlerTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCHandlerTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCHandlerTotalNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCHandlerTotalNode) GetPath() string                    { return node.path }
 func (node *RPCHandlerTotalNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for handler total")
 }
@@ -1129,11 +1112,10 @@ func (node *RPCHandlerSegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *RPCHandlerSegmentNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRPC }
-func (node *RPCHandlerSegmentNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *RPCHandlerSegmentNode) GetParent() MetricNode                  { return node.parent }
-func (node *RPCHandlerSegmentNode) GetPath() string                        { return node.path }
-func (node *RPCHandlerSegmentNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRPC }
+func (node *RPCHandlerSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
+func (node *RPCHandlerSegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RPCHandlerSegmentNode) GetParent() MetricNode              { return node.parent }
+func (node *RPCHandlerSegmentNode) GetPath() string                    { return node.path }
 func (node *RPCHandlerSegmentNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for handler segment")
 }

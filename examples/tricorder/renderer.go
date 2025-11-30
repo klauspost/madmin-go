@@ -363,8 +363,8 @@ func (r *Renderer) renderLeafData(nav *NavigationState) string {
 		formattedValue := r.formatValue(displayKey, value)
 
 		// Trim key and value to fit available width
-		maxKeyWidth := 25  // Reserve space for key
-		maxValueWidth := r.width - maxKeyWidth - 10  // Reserve space for value and padding
+		maxKeyWidth := 25                           // Reserve space for key
+		maxValueWidth := r.width - maxKeyWidth - 10 // Reserve space for value and padding
 
 		if len(displayKey) > maxKeyWidth {
 			displayKey = displayKey[:maxKeyWidth-3] + "..."

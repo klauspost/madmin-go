@@ -116,10 +116,6 @@ func (node *MemMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *MemMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsMem
-}
-
 func (node *MemMetricsNavigator) ShouldPauseRefresh() bool {
 	return false
 }
@@ -215,11 +211,10 @@ func (node *MemUsageNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemUsageNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
-func (node *MemUsageNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *MemUsageNode) GetParent() MetricNode                  { return node.parent }
-func (node *MemUsageNode) GetPath() string                        { return node.path }
-func (node *MemUsageNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
+func (node *MemUsageNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemUsageNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemUsageNode) GetParent() MetricNode              { return node.parent }
+func (node *MemUsageNode) GetPath() string                    { return node.path }
 
 func (node *MemUsageNode) ShouldPauseRefresh() bool {
 	return false
@@ -308,11 +303,10 @@ func (node *MemSystemNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemSystemNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
-func (node *MemSystemNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *MemSystemNode) GetParent() MetricNode                  { return node.parent }
-func (node *MemSystemNode) GetPath() string                        { return node.path }
-func (node *MemSystemNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
+func (node *MemSystemNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemSystemNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemSystemNode) GetParent() MetricNode              { return node.parent }
+func (node *MemSystemNode) GetPath() string                    { return node.path }
 
 func (node *MemSystemNode) ShouldPauseRefresh() bool {
 	return false
@@ -413,11 +407,10 @@ func (node *MemSwapNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemSwapNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
-func (node *MemSwapNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *MemSwapNode) GetParent() MetricNode                  { return node.parent }
-func (node *MemSwapNode) GetPath() string                        { return node.path }
-func (node *MemSwapNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
+func (node *MemSwapNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemSwapNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemSwapNode) GetParent() MetricNode              { return node.parent }
+func (node *MemSwapNode) GetPath() string                    { return node.path }
 
 func (node *MemSwapNode) ShouldPauseRefresh() bool {
 	return false
@@ -515,11 +508,10 @@ func (node *MemLimitsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemLimitsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsMem }
-func (node *MemLimitsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *MemLimitsNode) GetParent() MetricNode                  { return node.parent }
-func (node *MemLimitsNode) GetPath() string                        { return node.path }
-func (node *MemLimitsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsMem }
+func (node *MemLimitsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemLimitsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemLimitsNode) GetParent() MetricNode              { return node.parent }
+func (node *MemLimitsNode) GetPath() string                    { return node.path }
 
 func (node *MemLimitsNode) ShouldPauseRefresh() bool {
 	return false

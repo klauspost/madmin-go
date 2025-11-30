@@ -1727,7 +1727,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 			if len(v.Segments) > 0 {
 				vCopy.Segments = append([]RPCStats{}, v.Segments...)
 			}
-			m.LastDay[k] = existing
+			m.LastDay[k] = vCopy
 			continue
 		}
 		existing.Add(&v)

@@ -30,15 +30,15 @@ func (node *APIMetricsNode) GetChildren() []MetricChild {
 		{Name: "since_start", Description: "API statistics since server start"},
 	}
 }
+
 func (node *APIMetricsNode) GetLeafData() map[string]string {
 	// Create comprehensive executive-level API performance dashboard
 	return node.generateAPIOverviewDashboard()
 }
-func (node *APIMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APIMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *APIMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *APIMetricsNode) GetPath() string                        { return node.path }
-func (node *APIMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APIMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APIMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *APIMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *APIMetricsNode) GetPath() string                    { return node.path }
 func (node *APIMetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "last_minute":
@@ -310,11 +310,10 @@ func (node *APILastMinuteNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastMinuteAPI), true, node.api.LastMinuteAPI)
 }
 
-func (node *APILastMinuteNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APILastMinuteNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *APILastMinuteNode) GetParent() MetricNode                  { return node.parent }
-func (node *APILastMinuteNode) GetPath() string                        { return node.path }
-func (node *APILastMinuteNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APILastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *APILastMinuteNode) GetParent() MetricNode              { return node.parent }
+func (node *APILastMinuteNode) GetPath() string                    { return node.path }
 func (node *APILastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if node.api.LastMinuteAPI == nil {
 		return nil, fmt.Errorf("no last minute API data available")
@@ -389,11 +388,10 @@ func (node *APILastDayNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APILastDayNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APILastDayNode) GetParent() MetricNode                  { return node.parent }
-func (node *APILastDayNode) GetPath() string                        { return node.path }
-func (node *APILastDayNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APILastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APILastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *APILastDayNode) GetPath() string                    { return node.path }
 
 func (node *APILastDayNode) GetChild(name string) (MetricNode, error) {
 	// Handle "All" entry - shows aggregated time segments
@@ -518,11 +516,10 @@ func (node *APILastDayAllNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APILastDayAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APILastDayAllNode) GetParent() MetricNode                  { return node.parent }
-func (node *APILastDayAllNode) GetPath() string                        { return node.path }
-func (node *APILastDayAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastDayAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APILastDayAllNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APILastDayAllNode) GetParent() MetricNode              { return node.parent }
+func (node *APILastDayAllNode) GetPath() string                    { return node.path }
 
 // APILastDayEndpointNode shows time segments for a specific API endpoint
 type APILastDayEndpointNode struct {
@@ -634,9 +631,8 @@ func (node *APILastDayEndpointNode) GetMetricType() madmin.MetricType { return m
 func (node *APILastDayEndpointNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
-func (node *APILastDayEndpointNode) GetParent() MetricNode                  { return node.parent }
-func (node *APILastDayEndpointNode) GetPath() string                        { return node.path }
-func (node *APILastDayEndpointNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastDayEndpointNode) GetParent() MetricNode { return node.parent }
+func (node *APILastDayEndpointNode) GetPath() string       { return node.path }
 func (node *APILastDayEndpointNode) ShouldPauseRefresh() bool {
 	return true
 }
@@ -656,15 +652,15 @@ func (node *APISinceStartNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(node.api.SinceStart, 0, false, nil)
 }
 
-func (node *APISinceStartNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APISinceStartNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *APISinceStartNode) GetParent() MetricNode                  { return node.parent }
-func (node *APISinceStartNode) GetPath() string                        { return node.path }
-func (node *APISinceStartNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APISinceStartNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APISinceStartNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *APISinceStartNode) GetParent() MetricNode              { return node.parent }
+func (node *APISinceStartNode) GetPath() string                    { return node.path }
 
 func (node *APISinceStartNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *APISinceStartNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for since_start node")
 }
@@ -685,15 +681,15 @@ func (node *APILastDayTotalNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
 }
 
-func (node *APILastDayTotalNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APILastDayTotalNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APILastDayTotalNode) GetParent() MetricNode                  { return node.parent }
-func (node *APILastDayTotalNode) GetPath() string                        { return node.path }
-func (node *APILastDayTotalNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APILastDayTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APILastDayTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APILastDayTotalNode) GetParent() MetricNode              { return node.parent }
+func (node *APILastDayTotalNode) GetPath() string                    { return node.path }
 
 func (node *APILastDayTotalNode) ShouldPauseRefresh() bool {
 	return true
 }
+
 func (node *APILastDayTotalNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last day total node")
 }
@@ -719,11 +715,10 @@ func (node *APITimeSegmentAllNode) GetLeafData() map[string]string {
 	return generateAPIStatsDisplay(node.segment, 1, false, nil)
 }
 
-func (node *APITimeSegmentAllNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APITimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APITimeSegmentAllNode) GetParent() MetricNode                  { return node.parent }
-func (node *APITimeSegmentAllNode) GetPath() string                        { return node.path }
-func (node *APITimeSegmentAllNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APITimeSegmentAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APITimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APITimeSegmentAllNode) GetParent() MetricNode              { return node.parent }
+func (node *APITimeSegmentAllNode) GetPath() string                    { return node.path }
 
 func (node *APITimeSegmentAllNode) ShouldPauseRefresh() bool {
 	return true
@@ -763,11 +758,10 @@ func (node *APITimeSegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APITimeSegmentNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APITimeSegmentNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APITimeSegmentNode) GetParent() MetricNode                  { return node.parent }
-func (node *APITimeSegmentNode) GetPath() string                        { return node.path }
-func (node *APITimeSegmentNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APITimeSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APITimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APITimeSegmentNode) GetParent() MetricNode              { return node.parent }
+func (node *APITimeSegmentNode) GetPath() string                    { return node.path }
 func (node *APITimeSegmentNode) GetChild(name string) (MetricNode, error) {
 	if name == "All" {
 		return &APITimeSegmentAllNode{
@@ -935,11 +929,10 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APIEndpointNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APIEndpointNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *APIEndpointNode) GetParent() MetricNode                  { return node.parent }
-func (node *APIEndpointNode) GetPath() string                        { return node.path }
-func (node *APIEndpointNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APIEndpointNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APIEndpointNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *APIEndpointNode) GetParent() MetricNode              { return node.parent }
+func (node *APIEndpointNode) GetPath() string                    { return node.path }
 func (node *APIEndpointNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for endpoint node")
 }
@@ -1004,15 +997,15 @@ func (node *APISegmentedNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *APISegmentedNode) GetMetricType() madmin.MetricType       { return madmin.MetricsAPI }
-func (node *APISegmentedNode) GetMetricFlags() madmin.MetricFlags     { return madmin.MetricsDayStats }
-func (node *APISegmentedNode) GetParent() MetricNode                  { return node.parent }
-func (node *APISegmentedNode) GetPath() string                        { return node.path }
-func (node *APISegmentedNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsAPI }
+func (node *APISegmentedNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
+func (node *APISegmentedNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *APISegmentedNode) GetParent() MetricNode              { return node.parent }
+func (node *APISegmentedNode) GetPath() string                    { return node.path }
 
 func (node *APISegmentedNode) ShouldPauseRefresh() bool {
 	return true
 }
+
 func (node *APISegmentedNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("segmented endpoint children not yet implemented: %s", name)
 }

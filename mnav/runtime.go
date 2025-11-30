@@ -103,10 +103,6 @@ func (node *RuntimeMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *RuntimeMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsRuntime
-}
-
 func (node *RuntimeMetricsNavigator) ShouldPauseRefresh() bool {
 	return false
 }
@@ -211,12 +207,10 @@ func (node *GCMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *GCMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
-func (node *GCMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *GCMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *GCMetricsNode) GetPath() string                        { return node.path }
-func (node *GCMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
-
+func (node *GCMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRuntime }
+func (node *GCMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *GCMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *GCMetricsNode) GetPath() string                    { return node.path }
 func (node *GCMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -302,12 +296,10 @@ func (node *MemoryMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *MemoryMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
-func (node *MemoryMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *MemoryMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *MemoryMetricsNode) GetPath() string                        { return node.path }
-func (node *MemoryMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
-
+func (node *MemoryMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRuntime }
+func (node *MemoryMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemoryMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *MemoryMetricsNode) GetPath() string                    { return node.path }
 func (node *MemoryMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -381,10 +373,6 @@ func (node *SchedulerMetricsNode) GetMetricType() madmin.MetricType   { return m
 func (node *SchedulerMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *SchedulerMetricsNode) GetParent() MetricNode              { return node.parent }
 func (node *SchedulerMetricsNode) GetPath() string                    { return node.path }
-func (node *SchedulerMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsRuntime
-}
-
 func (node *SchedulerMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -415,7 +403,7 @@ func (node *CPUClassesMetricsNode) GetLeafData() map[string]string {
 
 	data := map[string]string{}
 
-	data["CPU TIME BREAKDOWN"] = "Time spent by runtime in different activities"
+	data["00:CPU time breakdown"] = "Time spent by runtime in different activities"
 
 	// GC activities
 	if gcAssist, ok := node.runtime.FloatMetrics["/cpu/classes/gc/mark/assist:cpu-seconds"]; ok {
@@ -456,10 +444,6 @@ func (node *CPUClassesMetricsNode) GetMetricType() madmin.MetricType   { return 
 func (node *CPUClassesMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *CPUClassesMetricsNode) GetParent() MetricNode              { return node.parent }
 func (node *CPUClassesMetricsNode) GetPath() string                    { return node.path }
-func (node *CPUClassesMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsRuntime
-}
-
 func (node *CPUClassesMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -492,7 +476,7 @@ func (node *SyncMetricsNode) GetLeafData() map[string]string {
 
 	// Mutex wait time
 	if mutexWait, ok := node.runtime.FloatMetrics["/sync/mutex/wait/total:seconds"]; ok {
-		data["SYNCHRONIZATION OVERHEAD"] = fmt.Sprintf("%.2fs total mutex wait time", mutexWait)
+		data["00:Sync Overhead"] = fmt.Sprintf("%.2fs total mutex wait time", mutexWait)
 	}
 
 	// Check for any other sync-related metrics that might be available
@@ -517,12 +501,10 @@ func (node *SyncMetricsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *SyncMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsRuntime }
-func (node *SyncMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *SyncMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *SyncMetricsNode) GetPath() string                        { return node.path }
-func (node *SyncMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsRuntime }
-
+func (node *SyncMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRuntime }
+func (node *SyncMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *SyncMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *SyncMetricsNode) GetPath() string                    { return node.path }
 func (node *SyncMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }

@@ -142,10 +142,6 @@ func (node *ScannerMetricsNode) GetPath() string {
 	return node.path
 }
 
-func (node *ScannerMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -218,13 +214,10 @@ func (node *ScannerLifetimeOpsNode) GetMetricType() madmin.MetricType   { return
 func (node *ScannerLifetimeOpsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerLifetimeOpsNode) GetParent() MetricNode              { return node.parent }
 func (node *ScannerLifetimeOpsNode) GetPath() string                    { return node.path }
-func (node *ScannerLifetimeOpsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - operation counts are displayed as leaf data")
 }
@@ -270,13 +263,10 @@ func (node *ScannerLifetimeILMNode) GetMetricType() madmin.MetricType   { return
 func (node *ScannerLifetimeILMNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerLifetimeILMNode) GetParent() MetricNode              { return node.parent }
 func (node *ScannerLifetimeILMNode) GetPath() string                    { return node.path }
-func (node *ScannerLifetimeILMNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerLifetimeILMNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerLifetimeILMNode) GetChild(name string) (MetricNode, error) {
 	if count, exists := node.ilm[name]; exists {
 		return NewScannerOpCountNode(name, count, node, fmt.Sprintf("%s/%s", node.path, name)), nil
@@ -296,7 +286,8 @@ type ScannerLastMinuteNode struct {
 func NewScannerLastMinuteNode(lastMinute *struct {
 	Actions map[string]madmin.TimedAction `json:"actions,omitempty"`
 	ILM     map[string]madmin.TimedAction `json:"ilm,omitempty"`
-}, parent MetricNode, path string) *ScannerLastMinuteNode {
+}, parent MetricNode, path string,
+) *ScannerLastMinuteNode {
 	return &ScannerLastMinuteNode{lastMinute: lastMinute, parent: parent, path: path}
 }
 
@@ -357,13 +348,10 @@ func (node *ScannerLastMinuteNode) GetMetricType() madmin.MetricType   { return 
 func (node *ScannerLastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerLastMinuteNode) GetParent() MetricNode              { return node.parent }
 func (node *ScannerLastMinuteNode) GetPath() string                    { return node.path }
-func (node *ScannerLastMinuteNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerLastMinuteNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "ilm":
@@ -436,13 +424,10 @@ func (node *ScannerTimedActionsNode) GetMetricType() madmin.MetricType   { retur
 func (node *ScannerTimedActionsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerTimedActionsNode) GetParent() MetricNode              { return node.parent }
 func (node *ScannerTimedActionsNode) GetPath() string                    { return node.path }
-func (node *ScannerTimedActionsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerTimedActionsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerTimedActionsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - actions are displayed as leaf data")
 }
@@ -473,13 +458,10 @@ func (node *ScannerTimedActionNode) GetMetricType() madmin.MetricType   { return
 func (node *ScannerTimedActionNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerTimedActionNode) GetParent() MetricNode              { return node.parent }
 func (node *ScannerTimedActionNode) GetPath() string                    { return node.path }
-func (node *ScannerTimedActionNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsScanner
-}
-
 func (node *ScannerTimedActionNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerTimedActionNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("timed action is a leaf node")
 }
@@ -506,15 +488,14 @@ func (node *ScannerPathsNode) GetLeafData() map[string]string {
 	}
 	return data
 }
-func (node *ScannerPathsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
-func (node *ScannerPathsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *ScannerPathsNode) GetParent() MetricNode                  { return node.parent }
-func (node *ScannerPathsNode) GetPath() string                        { return node.path }
-func (node *ScannerPathsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
-
+func (node *ScannerPathsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerPathsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerPathsNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerPathsNode) GetPath() string                    { return node.path }
 func (node *ScannerPathsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerPathsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("paths node is a leaf node")
 }
@@ -537,15 +518,14 @@ func (node *ScannerOpCountNode) GetLeafData() map[string]string {
 		"count":          strconv.FormatUint(node.count, 10),
 	}
 }
-func (node *ScannerOpCountNode) GetMetricType() madmin.MetricType       { return madmin.MetricsScanner }
-func (node *ScannerOpCountNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *ScannerOpCountNode) GetParent() MetricNode                  { return node.parent }
-func (node *ScannerOpCountNode) GetPath() string                        { return node.path }
-func (node *ScannerOpCountNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsScanner }
-
+func (node *ScannerOpCountNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerOpCountNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ScannerOpCountNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerOpCountNode) GetPath() string                    { return node.path }
 func (node *ScannerOpCountNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *ScannerOpCountNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation count is a leaf node")
 }

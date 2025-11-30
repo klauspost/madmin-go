@@ -168,7 +168,6 @@ func collectAndSaveMetrics(adminClient *madmin.AdminClient, config Config, issue
 	err = adminClient.Metrics(ctx, opts, func(m madmin.RealtimeMetrics) {
 		metricsData = &m
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("failed to collect metrics: %v", err)
 	}

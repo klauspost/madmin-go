@@ -113,10 +113,6 @@ func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
 }
 
-func (node *NetMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricNet
-}
-
 func (node *NetMetricsNavigator) ShouldPauseRefresh() bool {
 	return false
 }
@@ -205,10 +201,6 @@ func (node *NetInterfacesNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("interface %q not found", name)
 }
 
-func (node *NetInterfacesNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricNet
-}
-
 func (node *NetInterfacesNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -274,10 +266,6 @@ func (node *NetInterfaceNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
 }
 
-func (node *NetInterfaceNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricNet
-}
-
 func (node *NetInterfaceNode) ShouldPauseRefresh() bool {
 	return false
 }
@@ -341,10 +329,6 @@ func (node *NetInternodeNode) GetLeafData() map[string]string {
 
 func (node *NetInternodeNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("child %q not found", name)
-}
-
-func (node *NetInternodeNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricNet
 }
 
 func (node *NetInternodeNode) ShouldPauseRefresh() bool {

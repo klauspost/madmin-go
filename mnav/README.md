@@ -37,7 +37,6 @@ type MetricNode interface {
     // Metadata
     GetMetricType() madmin.MetricType    // Which metric type this node represents
     GetMetricFlags() madmin.MetricFlags  // Additional flags needed
-    RequiredMetricTypes() madmin.MetricType // What metrics this node needs
     ShouldPauseRefresh() bool        // Whether to pause auto-refresh
 }
 ```
@@ -98,8 +97,8 @@ type APIMetricsNavigator struct {
     // ... fields
 }
 
-func (n *APIMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-    return madmin.MetricsAPI  // This navigator needs API metrics
+func (n *APIMetricsNavigator) GetMetricType() madmin.MetricType {
+    return madmin.MetricsAPI  // This navigator represents API metrics
 }
 
 func (n *APIMetricsNavigator) GetMetricFlags() madmin.MetricFlags {
@@ -306,7 +305,7 @@ data := scanner.GetLeafData()
 
 ```go
 // Check what metrics a node needs
-requiredTypes := node.RequiredMetricTypes()
+requiredTypes := node.GetMetricType()
 requiredFlags := node.GetMetricFlags()
 
 // Collect metrics with appropriate flags
@@ -427,7 +426,7 @@ func (ns *NavigationState) NavigateInto() error {
     }
 
     // Check if new metrics are needed
-    requiredTypes := childNode.RequiredMetricTypes()
+    requiredTypes := childNode.GetMetricType()
     if !ns.hasRequiredMetrics(requiredTypes) {
         // Trigger refresh with new flags
         ns.Refresh()

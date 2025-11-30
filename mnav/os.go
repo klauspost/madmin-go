@@ -77,10 +77,6 @@ func (node *OSMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *OSMetricsNavigator) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsOS
-}
-
 func (node *OSMetricsNavigator) ShouldPauseRefresh() bool {
 	return false
 }
@@ -116,16 +112,16 @@ func (node *OSMetricsNode) GetChildren() []MetricChild {
 		{Name: "sensors", Description: "Temperature sensor metrics"},
 	}
 }
-func (node *OSMetricsNode) GetLeafData() map[string]string         { return nil }
-func (node *OSMetricsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
-func (node *OSMetricsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *OSMetricsNode) GetParent() MetricNode                  { return node.parent }
-func (node *OSMetricsNode) GetPath() string                        { return node.path }
-func (node *OSMetricsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
+func (node *OSMetricsNode) GetLeafData() map[string]string     { return nil }
+func (node *OSMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsOS }
+func (node *OSMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *OSMetricsNode) GetParent() MetricNode              { return node.parent }
+func (node *OSMetricsNode) GetPath() string                    { return node.path }
 
 func (node *OSMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *OSMetricsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("os metric sub-navigation not yet implemented for: %s", name)
 }
@@ -164,15 +160,15 @@ func (node *OSLifetimeOpsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *OSLifetimeOpsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
-func (node *OSLifetimeOpsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *OSLifetimeOpsNode) GetParent() MetricNode                  { return node.parent }
-func (node *OSLifetimeOpsNode) GetPath() string                        { return node.path }
-func (node *OSLifetimeOpsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
+func (node *OSLifetimeOpsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsOS }
+func (node *OSLifetimeOpsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *OSLifetimeOpsNode) GetParent() MetricNode              { return node.parent }
+func (node *OSLifetimeOpsNode) GetPath() string                    { return node.path }
 
 func (node *OSLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *OSLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("lifetime operations node has no children")
 }
@@ -239,15 +235,15 @@ func (node *OSLastMinuteNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *OSLastMinuteNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
-func (node *OSLastMinuteNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *OSLastMinuteNode) GetParent() MetricNode                  { return node.parent }
-func (node *OSLastMinuteNode) GetPath() string                        { return node.path }
-func (node *OSLastMinuteNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
+func (node *OSLastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsOS }
+func (node *OSLastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *OSLastMinuteNode) GetParent() MetricNode              { return node.parent }
+func (node *OSLastMinuteNode) GetPath() string                    { return node.path }
 
 func (node *OSLastMinuteNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *OSLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("last minute operations node has no children")
 }
@@ -341,15 +337,15 @@ func (node *OSSensorsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *OSSensorsNode) GetMetricType() madmin.MetricType       { return madmin.MetricsOS }
-func (node *OSSensorsNode) GetMetricFlags() madmin.MetricFlags     { return 0 }
-func (node *OSSensorsNode) GetParent() MetricNode                  { return node.parent }
-func (node *OSSensorsNode) GetPath() string                        { return node.path }
-func (node *OSSensorsNode) RequiredMetricTypes() madmin.MetricType { return madmin.MetricsOS }
+func (node *OSSensorsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsOS }
+func (node *OSSensorsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *OSSensorsNode) GetParent() MetricNode              { return node.parent }
+func (node *OSSensorsNode) GetPath() string                    { return node.path }
 
 func (node *OSSensorsNode) ShouldPauseRefresh() bool {
 	return false
 }
+
 func (node *OSSensorsNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("sensors node has no children")
 }

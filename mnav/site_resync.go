@@ -132,10 +132,6 @@ func (node *SiteResyncMetricsNode) GetPath() string {
 	return node.path
 }
 
-func (node *SiteResyncMetricsNode) RequiredMetricTypes() madmin.MetricType {
-	return madmin.MetricsSiteResync
-}
-
 func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
 	// Site resync operations can take a long time to complete
 	// If operation is completed or failed, no need for frequent refresh
