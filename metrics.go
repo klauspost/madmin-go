@@ -61,6 +61,9 @@ const (
 	MetricsAPI
 	MetricsReplication
 	MetricsProcess
+	MetricsNodes
+	MetricsLocks
+	MetricsTables
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -361,6 +364,125 @@ type Metrics struct {
 	API         *APIMetrics         `json:"api,omitempty"`
 	Replication *ReplicationMetrics `json:"replication,omitempty"`
 	Process     *ProcessMetrics     `json:"process,omitempty"`
+	Node        *NodeMetrics        `json:"node,omitempty"`
+	Lock        *LockMetrics        `json:"lock,omitempty"`
+	Tables      *TableMetrics       `json:"tables,omitempty"`
+}
+
+type NodeMetrics struct {
+	N int `json:"n"`
+
+	// MaxAPI is the max api version reported per node.
+	MaxAPI map[uint32]int `json:"maxAPI,omitempty"`
+
+	// CurrentAPI is the current api version reported per node.
+	CurrentAPI map[uint32]int `json:"currentAPI,omitempty"`
+}
+
+// Merge other into m.
+func (m *NodeMetrics) Merge(other *NodeMetrics) {
+	if other == nil || other.N == 0 {
+		return
+	}
+
+	m.N += other.N
+	if m.MaxAPI == nil && other.MaxAPI != nil {
+		m.MaxAPI = make(map[uint32]int, len(other.MaxAPI))
+	}
+	for k, v := range other.MaxAPI {
+		m.MaxAPI[k] += v
+	}
+	if m.CurrentAPI == nil && other.CurrentAPI != nil {
+		m.CurrentAPI = make(map[uint32]int, len(other.CurrentAPI))
+	}
+	for k, v := range other.CurrentAPI {
+		m.CurrentAPI[k] += v
+	}
+}
+
+// LockMetrics are metrics for the internal per node locking system.
+type LockMetrics struct {
+	N int `json:"n"`
+
+	// Waiting is the number of locks queued for processing.
+	Waiting uint64 `json:"waiting,omitempty"`
+
+	// Active is the number of resource locks currently held.
+	Active uint64 `json:"active,omitempty"`
+
+	// Updated on every cleanup pass.
+	Readers uint64 `json:"readers,omitempty"`
+	Writers uint64 `json:"writers,omitempty"`
+
+	LastMinute LockTimedMetrics      `json:"lastMinute"`
+	LastDay    *SegmentedLockMetrics `json:"lastDay,omitempty"`
+}
+
+// Merge other into m.
+func (m *LockMetrics) Merge(other *LockMetrics) {
+	// TODO implement me
+	panic("implement me")
+}
+
+type SegmentedLockMetrics Segmented[LockTimedMetrics, *LockTimedMetrics]
+
+type LockTimedMetrics struct {
+	N                 int    `json:"n,omitempty"`
+	FullQueueRejected uint64 `json:"fullQueueRejected,omitempty"`
+
+	ReadLocksGranted  uint64 `json:"readLocksGranted,omitempty"`
+	ReadLocksRejected uint64 `json:"readLocksRejected,omitempty"`
+
+	WriteLocksGranted  uint64 `json:"writeLocksGranted,omitempty"`
+	WriteLocksRejected uint64 `json:"writeLocksRejected,omitempty"`
+
+	Expired uint64 `json:"expired,omitempty"`
+}
+
+func (l *LockTimedMetrics) Add(t *LockTimedMetrics) {
+	// TODO implement me
+	panic("implement me")
+}
+
+type TableMetrics struct {
+	N int `json:"n"`
+
+	// Maximum value from reporting servers:
+	Warehouses int `json:"warehouses,omitempty"`
+	Namespaces int `json:"namespaces,omitempty"`
+	Views      int `json:"views,omitempty"`
+
+	// Point in time, accumulated
+	ActiveTx     int `json:"activeTx,omitempty"`
+	StagedTables int `json:"staged,omitempty"`
+
+	// Accumulated - as time-series delta values?
+	Timeseries struct {
+		NamespacesCreated int64 `json:"ns_created,omitempty"`
+		TablesCreated     int64 `json:"tb_created,omitempty"`
+		ViewsCreated      int64 `json:"vw_created,omitempty"`
+		ViewsRegistered   int64 `json:"vw_registered,omitempty"`
+		TablesCommitted   int64 `json:"tb_committed,omitempty"`
+		CommittedToLive   int64 `json:"tb_live,omitempty"`
+		RecoveryOps       int64 `json:"recoveryOps,omitempty"`
+		ZombiesFound      int64 `json:"zombies,omitempty"`
+		Rollbacks         int64 `json:"rollbacks,omitempty"`
+	}
+
+	// Or should this be generic per operation? Mostly (but not limited to TablesObjectLayer functions)
+	// Index is operation type RegisterView, LoadView, DropView, etc.
+	TimeseriesByOperation map[string]struct {
+		N           int     // number of operations
+		TimeSecs    float64 // Can be used for average
+		MaxTimeSecs float64 // Max
+		MinTimeSecs float64 // Min
+	}
+}
+
+// Merge other into m.
+func (m *TableMetrics) Merge(other *LockMetrics) {
+	// TODO implement me
+	panic("implement me")
 }
 
 // Merge other into r.
@@ -424,6 +546,8 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Process = &ProcessMetrics{}
 	}
 	r.Process.Merge(other.Process)
+
+	// FIXME: Merge new types
 }
 
 // ScannerMetrics contains scanner information.
